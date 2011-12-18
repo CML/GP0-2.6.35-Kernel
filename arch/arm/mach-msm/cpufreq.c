@@ -219,10 +219,12 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	return 0;
 }
 
+#ifdef CONFIG_BOARD_PW28
 static struct freq_attr *msm_cpufreq_attr[] = {
     &cpufreq_freq_attr_scaling_available_freqs,
     NULL,
 };
+#endif
 
 static int msm_cpufreq_suspend(void)
 {
@@ -289,7 +291,9 @@ static struct cpufreq_driver msm_cpufreq_driver = {
 	.verify		= msm_cpufreq_verify,
 	.target		= msm_cpufreq_target,
 	.name		= "msm",
+#ifdef CONFIG_BOARD_PW28
 	.attr		= msm_cpufreq_attr,
+#endif
 };
 
 static struct notifier_block msm_cpufreq_pm_notifier = {

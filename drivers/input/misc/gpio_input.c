@@ -384,7 +384,7 @@ err_bad_keymap:
 	kfree(ds);
 err_ds_alloc_failed:
 	return ret;
-
 }
+#ifdef CONFIG_BOARD_PW28
 EXPORT_SYMBOL(gpio_event_input_func);
-
+#endif
