@@ -41,7 +41,7 @@
 #define SDIO_VENDOR_ID_BROADCOM		0x02d0
 #endif /* !defined(SDIO_VENDOR_ID_BROADCOM) */
 
-#if 0
+#ifndef CONFIG_BOARD_PW28
 #define SDIO_DEVICE_ID_BROADCOM_DEFAULT	0x0000
 
 #if !defined(SDIO_DEVICE_ID_BROADCOM_4325_SDGWB)
@@ -141,7 +141,7 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 
 /* devices we support, null terminated */
 static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
-#if 0
+#ifndef CONFIG_BOARD_PW28
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_DEFAULT) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325_SDGWB) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325) },

@@ -53,7 +53,7 @@ typedef const struct si_pub  si_t;
 #define WL_ASSOC(x)
 #define WL_INFORM(x)
 #define WL_WSEC(x)
-#define WL_SCAN(x)	pr_info x
+#define WL_SCAN(x)
 
 #include <wl_iw.h>
 
@@ -4904,7 +4904,9 @@ wl_iw_set_wpaauth(
 		} else if (val) {
 			if ((error = dev_wlc_intvar_set(dev, "is_WPS_enrollee", FALSE))) {
 				WL_WSEC(("Failed to clear iovar is_WPS_enrollee\n"));
-				//return error;
+#ifndef CONFIG_BOARD_PW28
+				return error;
+#endif
 			}
 		}
 

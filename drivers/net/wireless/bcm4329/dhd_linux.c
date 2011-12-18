@@ -2543,7 +2543,7 @@ dhd_module_init(void)
 		DHD_ERROR(("%s: sdio_register_driver failed\n", __FUNCTION__));
 		goto fail_1;
 	}
-#if 0
+#ifndef CONFIG_BOARD_PW28
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	/*
 	 * Wait till MMC sdio_register_driver callback called and made driver attach.
@@ -2558,7 +2558,7 @@ dhd_module_init(void)
 #endif
 #endif
 	return error;
-#if 0
+#ifndef CONFIG_BOARD_PW28
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 fail_2:
 	dhd_bus_unregister();

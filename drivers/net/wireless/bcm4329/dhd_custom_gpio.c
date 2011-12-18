@@ -34,7 +34,10 @@
 
 #include <wlioctl.h>
 #include <wl_iw.h>
+
+#ifdef CONFIG_BOARD_PW28
 #include <linux/gpio.h>
+#endif
 
 #define WL_ERROR(x) printf x
 #define WL_TRACE(x)
