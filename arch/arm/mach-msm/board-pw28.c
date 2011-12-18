@@ -95,14 +95,13 @@
 #define MASS_STORAGE_NAME	"SIMCOM"
 #define PRUD_NAME		"PW28"
 #define VID	0x05C6
-#define PID	0x9018
 #define ADBFN	0x1A
 
 #ifdef CONFIG_USB_FUNCTION
 static struct usb_mass_storage_platform_data usb_mass_storage_pdata = {
 	.nluns          = 0x02,
 	.buf_size       = 16384,
-	.vendor         = MASS_STORAGE_NAME,        // not used
+	.vendor         = "PW28",
 	.product        = "Mass storage",
 	.release        = 0xffff,
 };
@@ -187,7 +186,7 @@ static struct android_usb_product usb_products[] = {
 		.functions	= usb_functions_default,
 	},
 	{
-		.product_id	= PID,
+		.product_id	= 0x9018,
 		.num_functions	= ARRAY_SIZE(usb_functions_default_adb),
 		.functions	= usb_functions_default_adb,
 	},
@@ -206,7 +205,7 @@ static struct android_usb_product usb_products[] = {
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
 	.nluns		= 1,
 	.vendor		= "Qualcomm Incorporated",
-	.product        = "Mass storage",
+	.product    = "Mass storage",
 	.release	= 0x0100,
 	.can_stall	= 1,
 };
@@ -220,9 +219,9 @@ static struct platform_device usb_mass_storage_device = {
 };
 
 static struct usb_ether_platform_data rndis_pdata = {
-	/* ethaddr is filled by board_serialno_setup */
-	.vendorID	= VID,
-	.vendorDescr	= "Qualcomm Incorporated",
+    /* ethaddr is filled by board_serialno_setup */
+    .vendorID   = 0x05C6,
+    .vendorDescr    = "Qualcomm Incorporated",
 };
 
 static struct platform_device rndis_device = {
@@ -234,11 +233,11 @@ static struct platform_device rndis_device = {
 };
 
 static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id	= VID,
-	.product_id	= 0x9026,
+	.vendor_id	= 0x489,
+	.product_id = 0x9026,
 	.version	= 0x0100,
-	.product_name		= PRUD_NAME,
-	.manufacturer_name	= MANU_NAME,
+	.product_name	   = "Zero",
+	.manufacturer_name = "GeeksPhone",
 	.num_products = ARRAY_SIZE(usb_products),
 	.products = usb_products,
 	.num_functions = ARRAY_SIZE(usb_functions_all),
@@ -343,7 +342,7 @@ static struct usb_composition usb_func_composition[] = {
 static struct msm_hsusb_platform_data msm_hsusb_pdata = {
 	.version	= 0x0100,
 	.phy_info	= (USB_PHY_INTEGRATED | USB_PHY_MODEL_65NM),
-	.vendor_id          = VID,
+	.vendor_id          = 0x489,
 	.product_name       = "Qualcomm HSUSB Device",
 	.serial_number      = "1234567890ABCDEF",
 	.manufacturer_name  = "Qualcomm Incorporated",
@@ -1328,21 +1327,10 @@ static void config_gpio_table(uint32_t *table, int len)
 static struct vreg *vreg_gp2;
 static struct vreg *vreg_gp3;
 
-int pmic_set_flash_led_current(enum pmic8058_leds id, unsigned mA)
-{
-       int rc;
-       rc = pmic_flash_led_set_current(mA);
-       return rc;
-}
-
 static struct msm_camera_sensor_flash_src msm_flash_src = {
 	.flash_sr_type = MSM_CAMERA_FLASH_SRC_PMIC,
-       ._fsrc.pmic_src.num_of_src = 1,
 	._fsrc.pmic_src.low_current  = 30,
 	._fsrc.pmic_src.high_current = 100,
-       ._fsrc.pmic_src.led_src_1 = 0,
-       ._fsrc.pmic_src.led_src_2 = 0,
-       ._fsrc.pmic_src.pmic_set_current = pmic_set_flash_led_current,
 };
 #ifdef CONFIG_MT9D112
 static void msm_camera_vreg_config(int vreg_en)
@@ -1629,7 +1617,7 @@ static void __init msm7x2x_init_irq(void)
 
 static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 	.acpu_switch_time_us = 50,
-	.max_speed_delta_khz = 400000,
+	.max_speed_delta_khz = 256000,
 	.vdd_switch_time_us = 62,
 	.max_axi_khz = 160000,
 };
@@ -1815,10 +1803,10 @@ static struct mmc_platform_data msm7x2x_sdc2_data = {
 #ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
 //	.sdiowakeup_irq = MSM_GPIO_TO_INT(66),
 #endif
-	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 24576000,
-	.msmsdcc_fmax	= 49152000,
-	.nonremovable	= 0,
+	.msmsdcc_fmin   = 144000,
+	.msmsdcc_fmid   = 24576000,
+	.msmsdcc_fmax   = 24576000,
+	.nonremovable   = 1,
 #ifdef CONFIG_MMC_MSM_SDC2_DUMMY52_REQUIRED
 	.dummy52_required = 1,
 #endif

@@ -259,22 +259,15 @@ static int req_acm_diag_pkg(
     memset(req_msg_ptr, 0xFF, msg_size);
     
     if (req_msg_ptr) {
-        rep_msg_ptr = (struct snd_acm_diag_rep *)req_msg_ptr;
         pkg_size = sizeof(struct acm_diag_pkg) + req_pkg_ptr->header.cmd_buf_length;
         memcpy(&req_msg_ptr->args.diag_pkg, req_pkg_ptr, pkg_size);
         req_msg_ptr->args.diag_pkg_size = cpu_to_be32(pkg_size);
         
-        // MM_INFO("req_cmd_buf_length:%d\n", req_pkg_ptr->header.cmd_buf_length);        
-        // MM_INFO("req_diag_pkg_size:%d\n", pkg_size);        
-        // MM_INFO("msg_size:%d\n", msg_size);  
-        
-        // dump_mem("req_pkg_ptr", (unsigned long)req_pkg_ptr, pkg_size);
         dump_mem("req_msg_ptr", (unsigned long)req_msg_ptr, msg_size);
         
         rc = msm_rpc_call_reply(ept,
         	SND_ACM_DIAG_REQ_PROC,
         	req_msg_ptr, msg_size, rep_msg_ptr, msg_size, 5 * HZ);
-        // dump_mem("rep_msg_ptr", (unsigned long)rep_msg_ptr, msg_size);
         pkg_size = be32_to_cpu(rep_msg_ptr->args.diag_pkg_size);
         memcpy(req_pkg_ptr, &rep_msg_ptr->args.diag_pkg, pkg_size);
         dump_mem("rep_pkg_ptr", (unsigned long)req_pkg_ptr, pkg_size);
