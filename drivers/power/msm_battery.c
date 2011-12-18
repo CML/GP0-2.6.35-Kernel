@@ -39,7 +39,9 @@
 #include <mach/msm_rpcrouter.h>
 #include <mach/msm_battery.h>
 
+#ifdef CONFIG_BARD_PW28
 #include <linux/suspend.h>
+#endif
 
 #define BATTERY_RPC_PROG	0x30000089
 #define BATTERY_RPC_VER_1_1	0x00010001
@@ -68,7 +70,11 @@
 #define BATTERY_CB_ID_ALL_ACTIV		1
 #define BATTERY_CB_ID_LOW_VOL		2
 
-#define BATTERY_LOW		3250 // 3200
+#ifdef CONFIG_BARD_PW28
+#define BATTERY_LOW		3250
+#else
+#define BATTERY_LOW		3200
+#endif
 #define BATTERY_HIGH		4300
 
 #define FEATRUE_BATTERY_CUST	/*SWH*/
@@ -135,12 +141,13 @@ static u32 msm_batt_capacity_cust(u32 current_voltage);
 #define DBG_LIMIT(x...) do {} while (0)
 #endif
 
+#ifdef CONFIG_BOARD_PW28
 #define WAKE_UPDATE_BATT_INFO 2
 
 extern int oem_rpc_client_register(int id);
 extern void set_data_to_arm9(int id, char *in, int insize);
 extern void request_suspend_state(suspend_state_t new_state);
-
+#endif
 enum {
 	BATTERY_REGISTRATION_SUCCESSFUL = 0,
 	BATTERY_DEREGISTRATION_SUCCESSFUL = BATTERY_REGISTRATION_SUCCESSFUL,
@@ -380,7 +387,9 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
+#ifdef CONFIG_BOARD_PW28
 	POWER_SUPPLY_PROP_TEMP,
+#endif
 };
 
 static int msm_batt_power_get_property(struct power_supply *psy,
@@ -401,20 +410,34 @@ static int msm_batt_power_get_property(struct power_supply *psy,
 		val->intval = msm_batt_info.batt_technology;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
+#ifdef CONFIG_BOARD_PW28
+		val->intval = msm_batt_info.voltage_max_design;
+#else
 		val->intval = msm_batt_info.voltage_max_design * 1000;
+#endif
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
+#ifdef CONFIG_BOARD_PW28
+		val->intval = msm_batt_info.voltage_min_design;
+#else
 		val->intval = msm_batt_info.voltage_min_design * 1000;
+#endif
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+#ifdef CONFIG_BOARD_PW28
 		val->intval = msm_batt_info.battery_voltage * 1000;
+#else
+		val->intval = msm_batt_info.battery_voltage;
+#endif
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = msm_batt_info.batt_capacity;
 		break;
+#ifdef CONFIG_BOARD_PW28
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = msm_batt_info.battery_temp * 10;
 		break;
+#endif
 	default:
 		return -EINVAL;
 	}
@@ -538,7 +561,6 @@ static void msm_batt_update_psy_status(void)
 #ifdef FEATRUE_BATTERY_CUST
 	msm_batt_capacity_cust(battery_voltage);
 #endif    
-
 	if (charger_status == msm_batt_info.charger_status &&
 	    charger_type == msm_batt_info.charger_type &&
 	    battery_status == msm_batt_info.battery_status &&
@@ -569,13 +591,22 @@ static void msm_batt_update_psy_status(void)
 	}
 
 	if (msm_batt_info.charger_type != charger_type) {
+#ifdef CONFIG_BOARD_PW28
 		if (charger_type == CHARGER_TYPE_USB_PC ||
+#else
+		if (charger_type == CHARGER_TYPE_USB_WALL ||
+		    charger_type == CHARGER_TYPE_USB_PC ||
+#endif
 		    charger_type == CHARGER_TYPE_USB_CARKIT) {
 			DBG_LIMIT("BATT: USB charger plugged in\n");
 			msm_batt_info.current_chg_source = USB_CHG;
 			supp = &msm_psy_usb;
+#ifdef CONFIG_BOARD_PW28
 		} else if (charger_type == CHARGER_TYPE_WALL ||
 		    charger_type == CHARGER_TYPE_USB_WALL) {
+#else
+		} else if (charger_type == CHARGER_TYPE_WALL) {
+#endif
 			DBG_LIMIT("BATT: AC Wall changer plugged in\n");
 			msm_batt_info.current_chg_source = AC_CHG;
 			supp = &msm_psy_ac;
@@ -718,6 +749,7 @@ static void msm_batt_update_psy_status(void)
 	}
 }
 
+#ifdef CONFIG_BOARD_PW28
 void update_usb_to_gui(int i)
 {
 	struct	power_supply *supp;
@@ -770,6 +802,7 @@ void update_usb_to_gui(int i)
 	pr_info("%s ---\n", __func__);
 }
 EXPORT_SYMBOL(update_usb_to_gui);
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 struct batt_modify_client_req {
@@ -917,8 +950,10 @@ void msm_batt_late_resume(struct early_suspend *h)
 	}
 
 	msm_batt_update_psy_status();
+#ifdef CONFIG_BOARD_PW28
 	rc = 0;
 	set_data_to_arm9(WAKE_UPDATE_BATT_INFO, (char *)&rc, sizeof(int));
+#endif
 	pr_debug("%s: exit\n", __func__);
 }
 #endif
@@ -1524,7 +1559,9 @@ static int __devinit msm_batt_probe(struct platform_device *pdev)
 	int rc;
 	struct msm_psy_batt_pdata *pdata = pdev->dev.platform_data;
 
+#ifdef CONFIG_BOARD_PW28
 	oem_rpc_client_register(WAKE_UPDATE_BATT_INFO);
+#endif
 	if (pdev->id != -1) {
 		dev_err(&pdev->dev,
 			"%s: MSM chipsets Can only support one"
