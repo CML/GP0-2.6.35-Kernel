@@ -39,7 +39,7 @@
 #include <mach/msm_rpcrouter.h>
 #include <mach/msm_battery.h>
 
-#ifdef CONFIG_BARD_PW28
+#ifdef CONFIG_BOARD_PW28
 #include <linux/suspend.h>
 #endif
 
