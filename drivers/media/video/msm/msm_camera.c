@@ -50,7 +50,7 @@ spinlock_t st_frame_spinlock;
 				__func__, __LINE__, ((to) ? "to" : "from"))
 #define ERR_COPY_FROM_USER() ERR_USER_COPY(0)
 #define ERR_COPY_TO_USER() ERR_USER_COPY(1)
-#define MAX_PMEM_CFG_BUFFERS 10
+#define MAX_PMEM_CFG_BUFFERS 8
 
 static struct class *msm_class;
 static dev_t msm_devno;

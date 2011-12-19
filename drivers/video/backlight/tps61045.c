@@ -17,186 +17,175 @@
 #define TPS_HW_MAX_LV (25)
 
 typedef struct {
-	uint Id;
-	uint MaxLv;
-	uint DesLv;
-	uint CurLv;
-	struct platform_device *Device;
+    uint Id;
+    uint MaxLv;
+    uint DesLv;
+    uint CurLv;
+    struct platform_device *Device;
 } TpsPumpRes_t;
 
 static TpsPumpRes_t TpsRes = {
-	.MaxLv = TPS_HW_MAX_LV,
+    .MaxLv = TPS_HW_MAX_LV,
 };
 
 static DEFINE_SPINLOCK(atom_lock);
 
-static void Tpsc(TpsPumpRes_t * pstRes, u32 n, bool Dir)
-{
-	unsigned long irq_flags;
-	u32 i, delay, loops;
+extern struct gpio_chip *gpio2chip(unsigned int gpio);
 
-	delay = Dir ? 20 : 200;
-
-	spin_lock_irqsave(&atom_lock, irq_flags);
-	loops = loops_per_jiffy / (1000000 / HZ);
-	loops *= delay;
-	for (i = 0; i < n; i++) {
-		gpio_direction_output(pstRes->Id, 1);
-		// delay 1us
-		gpio_direction_output(pstRes->Id, 0);
-		__delay(loops);
-	}
-	gpio_direction_output(pstRes->Id, 1);
-	spin_unlock_irqrestore(&atom_lock, irq_flags);
-
-	udelay(1000);
+static void Tpsc(TpsPumpRes_t *pstRes, u32 n, bool Dir) {
+	struct gpio_chip * chip;
+    unsigned long irq_flags;
+    u32 i, offset, delay, loops;
+    chip = gpio2chip(pstRes->Id);
+    offset = pstRes->Id - chip->base;
+    delay = Dir ? 20 : 200;
+    
+    spin_lock_irqsave(&atom_lock, irq_flags);
+    loops = loops_per_jiffy/(1000000/HZ);
+    loops *= delay;
+    for (i = 0; i < n; i++) {
+        gpio_direction_output(pstRes->Id, 1);
+	    udelay(1);
+        gpio_direction_output(pstRes->Id, 0);
+        __delay(loops);
+    }
+    gpio_direction_output(pstRes->Id, 1);
+    spin_unlock_irqrestore(&atom_lock, irq_flags);
+    udelay(1000);
 }
 
-static uint Tps61045Lv(uint Lv)
-{
-	uint Bank;
+uint Tps61045Lv(uint Lv) {    
+    uint Bank;
 
-	CLIP_VALUE(Lv, 0, 100);
-	Bank = Lv * TpsRes.MaxLv / 100;
-	CLIP_VALUE(Bank, 1, TpsRes.MaxLv);
-	return Bank;
+    CLIP_VALUE(Lv, 0, 100);
+    Bank = Lv * TpsRes.MaxLv / 100;
+    CLIP_VALUE(Bank, 1, TpsRes.MaxLv);
+    return Bank;
 }
 
-static void Tps61045Set(TpsPumpRes_t * pstRes)
-{
-	uint Delta;
+void Tps61045Set(TpsPumpRes_t *pstRes) {
+    uint Delta;
 
-	printk("CurLv:%d, DesLv:%d\n", pstRes->CurLv, pstRes->DesLv);
-
-	if (pstRes->DesLv > pstRes->CurLv) {
-		Delta = pstRes->DesLv - pstRes->CurLv;
-		Tpsc(pstRes, Delta, true);
-	} else if (pstRes->DesLv < pstRes->CurLv) {
-		Delta = pstRes->CurLv - pstRes->DesLv;
-		Tpsc(pstRes, Delta, false);
-	} else {
-		gpio_set_value(pstRes->Id, 1);
-	}
-	pstRes->CurLv = pstRes->DesLv;
+    if (pstRes->DesLv > pstRes->CurLv) {
+        Delta = pstRes->DesLv - pstRes->CurLv;
+        Tpsc(pstRes, Delta, true);        
+    }
+    else if (pstRes->DesLv < pstRes->CurLv) {
+        Delta = pstRes->CurLv - pstRes->DesLv;
+        Tpsc(pstRes, Delta, false);        
+    }
+    else {
+        gpio_set_value(pstRes->Id, 1);
+    }
+	udelay(1);
+    pstRes->CurLv = pstRes->DesLv;
 }
 
-static void Tps61045PowerOn(TpsPumpRes_t * pstRes)
-{
-	gpio_set_value(pstRes->Id, 1);
-//	pstRes->CurLv = pstRes->DesLv = TPS_HW_MAX_LV;
-	pstRes->CurLv = pstRes->DesLv = TpsRes.MaxLv;
+void Tps61045PowerOn(TpsPumpRes_t *pstRes) {
+    gpio_set_value(pstRes->Id, 1);
+    pstRes->CurLv = pstRes->DesLv = TPS_HW_MAX_LV;
 }
 
-static void Tps61045PowerOff(TpsPumpRes_t * pstRes)
-{
-	gpio_set_value(pstRes->Id, 0);
-	udelay(600);
+void Tps61045PowerOff(TpsPumpRes_t *pstRes) {
+    
+    gpio_set_value(pstRes->Id, 0);
+    udelay(600);
 }
 
-static void _ChargePumpPowerOn(void)
-{
-	Tps61045PowerOn(&TpsRes);
+static void _ChargePumpPowerOn(void) {
+    Tps61045PowerOn(&TpsRes);
 }
 
-static void _ChargePumpPowerOff(void)
-{
-	Tps61045PowerOff(&TpsRes);
+static void _ChargePumpPowerOff(void) {
+    Tps61045PowerOff(&TpsRes);
 }
 
-static void _ChargePumpSetDispLightLv(uint Lv)
-{
-	TpsRes.DesLv = Tps61045Lv(Lv);
-	Tps61045Set(&TpsRes);
+static void _ChargePumpSetDispLightLv(uint Lv) {
+    TpsRes.DesLv = Tps61045Lv(Lv);
+    Tps61045Set(&TpsRes);
 }
 
-static void _ChargePumpSetKeyLightLv(uint Lv)
-{
+static void _ChargePumpSetKeyLightLv(uint Lv) {
 }
 
 static ChargePumpIf_t _ChargePumpIf = {
-	.PowerOn = &_ChargePumpPowerOn,
-	.PowerOff = &_ChargePumpPowerOff,
-	.SetDispLightLv = &_ChargePumpSetDispLightLv,
-	.SetKeyLightLv = &_ChargePumpSetKeyLightLv,
+    .PowerOn = &_ChargePumpPowerOn,
+    .PowerOff = &_ChargePumpPowerOff,
+    .SetDispLightLv = &_ChargePumpSetDispLightLv,
+    .SetKeyLightLv = &_ChargePumpSetKeyLightLv,
 };
 
-static int __init Tps61045Probe(struct platform_device *pdev)
-{
-	int rc;
-	struct resource *res;
+static int __init Tps61045Probe(struct platform_device *pdev) {
 
-	TpsRes.Device = pdev;
+    int rc;
+    struct resource *res;
+    
+    TpsRes.Device = pdev;
 
-	do {
-		res =
-		    platform_get_resource_byname(TpsRes.Device, IORESOURCE_IO,
-						 "ctrl");
-		if (!res) {
-			printk(KERN_ERR "%s:%d get ctrl pin fail\n",
-			       __func__, __LINE__);
-			rc = -EIO;
-			break;
-		}
-		TpsRes.Id = res->start;
-		printk(KERN_INFO "%s: get ctrl pin %d\n", __func__, TpsRes.Id);
+    do {
+        res = platform_get_resource_byname(TpsRes.Device, IORESOURCE_IO, "ctrl");
+        if (!res) {
+            printk(KERN_ERR "%s:%d get ctrl pin fail\n",
+                    __func__, __LINE__);
+            rc = -EIO;
+            break;
+        }
+        TpsRes.Id = res->start;
+        printk(KERN_INFO "%s: get ctrl pin %d\n", __func__, TpsRes.Id);
+        
+        rc = gpio_request(TpsRes.Id, "ctrl_pin");
+        if (rc)
+            break;
 
-		rc = gpio_request(TpsRes.Id, "ctrl_pin");
-		if (rc)
-			break;
-		gpio_direction_output(TpsRes.Id, 0);
-		Tps61045PowerOff(&TpsRes);
+        gpio_direction_output(TpsRes.Id, 0);
+		udelay(1);
+        Tps61045PowerOff(&TpsRes);
 
-		res =
-		    platform_get_resource_byname(TpsRes.Device, IORESOURCE_IO,
-						 "lvs");
-		if (res) {
-			TpsRes.MaxLv = res->start;
-		} else {
-			printk(KERN_WARNING "%s:%d get levels fail\n",
-			       __func__, __LINE__);
-		}
-		if (TpsRes.MaxLv > TPS_HW_MAX_LV) {
-			TpsRes.MaxLv = TPS_HW_MAX_LV;
-		}
-		printk(KERN_INFO "%s: get max level %d\n", __func__,
-		       TpsRes.MaxLv);
-//		TpsRes.CurLv = TpsRes.DesLv = TPS_HW_MAX_LV;
-		TpsRes.CurLv = TpsRes.DesLv = TpsRes.MaxLv;
+        res = platform_get_resource_byname(TpsRes.Device, IORESOURCE_IO, "lvs");
+        if (res) {
+            TpsRes.MaxLv = res->start;
+        }
+        else {
+            printk(KERN_WARNING "%s:%d get levels fail\n",
+                    __func__, __LINE__);
+        }
+        if (TpsRes.MaxLv > TPS_HW_MAX_LV) {
+            TpsRes.MaxLv = TPS_HW_MAX_LV;
+        }
+        printk(KERN_INFO "%s: get max level %d\n", __func__, TpsRes.MaxLv);
+        TpsRes.CurLv = TpsRes.DesLv = TPS_HW_MAX_LV;
+		udelay(1);        
+        ChargePumpRegIf(&_ChargePumpIf);
+    } while(0);
 
-		ChargePumpRegIf(&_ChargePumpIf);
-
-	} while (0);
-
-	return rc;
+    return rc;
 }
 
 static struct platform_driver __refdata Tps61045River = {
-	.probe = Tps61045Probe,
-	.driver = {
-		   .name = "tps61045",
-		   },
+    .probe  = Tps61045Probe,
+    .driver = {
+        .name   = "tps61045",
+    },
 };
 
-int __init Tps61045Init(void)
+int __init Tps61045Init(void) 
 {
-	int ret;
+    int ret;
 
-	ret = platform_driver_register(&Tps61045River);
-
-	return ret;
+    ret = platform_driver_register(&Tps61045River);
+    
+    return ret;
 }
 
-void __exit Tps61045Exit(void)
+void __exit Tps61045Exit(void) 
 {
-	platform_driver_unregister(&Tps61045River);
+    platform_driver_unregister(&Tps61045River);
 }
+
+void ChargePumpTest(void) {
+    Tpsc(&TpsRes, 2, false);
+}
+EXPORT_SYMBOL(ChargePumpTest);
 
 module_init(Tps61045Init);
 module_exit(Tps61045Exit);
-
-void ChargePumpTest(void)
-{
-	Tpsc(&TpsRes, 2, false);
-}
-
-EXPORT_SYMBOL(ChargePumpTest);

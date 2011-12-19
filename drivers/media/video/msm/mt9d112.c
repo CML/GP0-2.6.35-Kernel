@@ -51,7 +51,7 @@ struct mt9d112_ctrl {
 static struct mt9d112_ctrl *mt9d112_ctrl;
 
 static DECLARE_WAIT_QUEUE_HEAD(mt9d112_wait_queue);
-//static int16_t mt9d112_effect = CAMERA_EFFECT_OFF;
+DECLARE_MUTEX(mt9d112_sem);
 static int16_t mt9d112_scene = CAMERA_BESTSHOT_OFF;
 
 /*=============================================================
@@ -230,19 +230,9 @@ static int32_t mt9d112_i2c_read(unsigned short   saddr,
 
 	return rc;
 }
-#if 0
-static int32_t mt9d112_set_lens_roll_off(void)
-{
-	int32_t rc = 0;
-	//rc = mt9d112_i2c_write_table(&mt9d112_regs.rftbl[0],
-	//							 mt9d112_regs.rftbl_size);
-	return rc;
-}
-#endif
+
 static long mt9d112_reg_init(void)
 {
-//	int32_t array_length;
-//	int32_t i;
 	long rc;
 
 	CDBG("mt9d112_reg_init\n");
