@@ -293,15 +293,12 @@ int hs_key_filter(struct gpio_event_input_devs *input_devs,
 	     void *data, unsigned int dev, unsigned int *type,
 	     unsigned int *code, int *value)
 {
-	static int key_pressed = 0;
-
 	pr_info("%s\n", __func__);
-
-	if (hs_is_key_enabled() || key_pressed) {
-		key_pressed = *value;
-		return 0;
+	if (!hs_is_key_enabled()) {
+		*type = EV_MAX;
 	}
-	return 1;	// ignorar
+
+	return 0;
 }
 
 static struct gpio_event_input_info headset_key_input_info = {
@@ -310,7 +307,7 @@ static struct gpio_event_input_info headset_key_input_info = {
 	.flags = 0 ,
 	.type = EV_KEY,
 	.keymap = headset_key_map,
-	.debounce_time.tv.nsec = 250 * NSEC_PER_MSEC,
+	.debounce_time.tv.nsec = 100 * NSEC_PER_MSEC,
 	.keymap_size = ARRAY_SIZE(headset_key_map)
 };
 /*------------------------------------------------------------------*/

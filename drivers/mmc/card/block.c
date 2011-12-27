@@ -422,7 +422,12 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 				if (err) {
 					printk(KERN_ERR "%s: error %d requesting status\n",
 					       req->rq_disk->disk_name, err);
+				#if 1
+					break;					
+				#else
 					goto cmd_err;
+				#endif
+
 				}
 				/*
 				 * Some cards mishandle the status bits,
@@ -442,6 +447,12 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		}
 
 		if (brq.cmd.error || brq.stop.error || brq.data.error) {
+			#if 1
+				spin_lock_irq(&md->lock);
+				ret = __blk_end_request(req, -EIO, brq.data.blksz);
+				spin_unlock_irq(&md->lock);
+				continue;		
+			#else
 			if (rq_data_dir(req) == READ) {
 				/*
 				 * After an error, we redo I/O one sector at a
@@ -453,6 +464,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 				spin_unlock_irq(&md->lock);
 				continue;
 			}
+			#endif
 			goto cmd_err;
 		}
 

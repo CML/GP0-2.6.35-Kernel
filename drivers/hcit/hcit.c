@@ -239,8 +239,6 @@ static unsigned bt_config_power_on[] = {
 	GPIO_CFG(70, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* PCM_SYNC */
 	GPIO_CFG(71, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* PCM_CLK */
 	GPIO_CFG(83, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* HOST_WAKE */
-	//GPIO_CFG(20, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	//GPIO_CFG(94, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 };
 
 static unsigned bt_config_power_off[] = {
@@ -254,8 +252,6 @@ static unsigned bt_config_power_off[] = {
 	GPIO_CFG(70, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* PCM_SYNC */
 	GPIO_CFG(71, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* PCM_CLK */
 	GPIO_CFG(83, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),	/* HOST_WAKE */
-	//GPIO_CFG(20, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	//GPIO_CFG(94, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 };
 
 static int bluetooth_power(int on)
@@ -367,14 +363,14 @@ static int hcit_resume(struct platform_device *dev)
 #define HCIT_NAME "hcit_misc"
 
 static struct platform_driver hcit_driver = {
-	.probe = hcit_probe,
-	.remove = hcit_remove,
+	.probe   = hcit_probe,
+	.remove  = hcit_remove,
 	.suspend = hcit_suspend,
-	.resume = hcit_resume,
-	.driver = {
-		   .name = "hcit",
-		   .owner = THIS_MODULE,
-		   },
+	.resume  = hcit_resume,
+	.driver  = {
+			   .name = "hcit",
+			   .owner = THIS_MODULE,
+			   },
 };
 
 static struct platform_device device_hcit = {

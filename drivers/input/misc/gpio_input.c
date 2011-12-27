@@ -131,19 +131,15 @@ static enum hrtimer_restart gpio_event_input_timer_func(struct hrtimer *timer)
 			pr_info("gpio_keys_scan_keys: key %x-%x, %d (%d) "
 				"changed to %d\n", ds->info->type,
 				key_entry->code, i, key_entry->gpio, pressed);
-#ifdef CONFIG_BOARD_PW28        
+#ifdef CONFIG_BOARD_PW28
+       		type = ds->info->type; 
+       		code = key_entry->code;
         	if (ds->info->info.filter) {
-        		type = ds->info->type; 
-        		code = key_entry->code;
-            		if (ds->info->info.filter(ds->input_devs, (struct gpio_event_info *)ds->info, ds, key_entry->dev,
-                			&type, &code, &pressed) == 0) {
-				input_event(ds->input_devs->dev[key_entry->dev], type,
-					code, pressed);
- 			}
-        	} else {
-			input_event(ds->input_devs->dev[key_entry->dev], ds->info->type,
-					key_entry->code, pressed);
+            		ds->info->info.filter(ds->input_devs, (struct gpio_event_info *)ds->info, ds, key_entry->dev,
+                		&type, &code, &pressed);
 		}
+		input_event(ds->input_devs->dev[key_entry->dev], type,
+			code, pressed);
 #else
 		input_event(ds->input_devs->dev[key_entry->dev], ds->info->type,
 			    key_entry->code, pressed);
@@ -217,15 +213,14 @@ static irqreturn_t gpio_event_input_irq_handler(int irq, void *dev_id)
 				ds->info->type, key_entry->code, keymap_index,
 				key_entry->gpio, pressed);
 #ifdef CONFIG_BOARD_PW28
-        	type = ds->info->type; 
-        	code = key_entry->code;
+       		type = ds->info->type; 
+       		code = key_entry->code;
         	if (ds->info->info.filter) {
-            		if (ds->info->info.filter(ds->input_devs, (struct gpio_event_info *)ds->info, ds, key_entry->dev,
-            			&type, &code, &pressed))
-			return IRQ_HANDLED;
-        	}
+            		ds->info->info.filter(ds->input_devs, (struct gpio_event_info *)ds->info, ds, key_entry->dev,
+                		&type, &code, &pressed);
+		}
 		input_event(ds->input_devs->dev[key_entry->dev], type,
-			    code, pressed);
+			code, pressed);
 #else
 		input_event(ds->input_devs->dev[key_entry->dev], ds->info->type,
 			    key_entry->code, pressed);

@@ -241,7 +241,11 @@ void mmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 
 	mmc_start_request(host, mrq);
 
-	wait_for_completion_io(&complete);
+	#ifndef CONFIG_SCHED_BFS
+		wait_for_completion_io(&complete);
+	#else
+		wait_for_completion(&complete);
+	#endif
 }
 
 EXPORT_SYMBOL(mmc_wait_for_req);
@@ -1418,6 +1422,12 @@ int mmc_resume_host(struct mmc_host *host)
 		}
 	}
 	mmc_bus_put(host);
+
+	/*
+	 * We add a slight delay here so that resume can progress
+	 * in parallel.
+	 */
+	mmc_detect_change(host, 1);
 
 	return err;
 }

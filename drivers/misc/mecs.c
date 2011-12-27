@@ -54,7 +54,7 @@ static atomic_t	o_flag;
 static atomic_t	p_flag;
 static atomic_t	l_flag;
 
-static short ecompass_delay = 0;
+static short ecompass_delay = 200;
 
 
 static struct input_dev *ecs_data_device;
@@ -115,16 +115,12 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 	int parms[4];
 	int ypr[16];
 
-	//pr_info("ecompass ecs_ctrl_ioctl++ 0x%x\n",cmd);
-
-
 	switch (cmd) {
 	case ECOMPASS_IOC_SET_MODE:
 		break;
 	case ECOMPASS_IOC_SET_DELAY:
 		if (copy_from_user(&delay, pa, sizeof(delay)))
 			return -EFAULT;
-		ecompass_delay = delay;
 		break;
 	case ECOMPASS_IOC_GET_DELAY:
 		delay = ecompass_delay;
@@ -196,6 +192,7 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 	case ECOMPASS_IOC_SET_APARMS:
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
+		break;
 		/* acceleration x-axis */
 		input_set_abs_params(ecs_data_device, ABS_X, 
 			parms[0], parms[1], parms[2], parms[3]);
@@ -212,6 +209,7 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
 		/* magnetic raw x-axis */
+		break;
 		input_set_abs_params(ecs_data_device, ABS_HAT0X, 
 			parms[0], parms[1], parms[2], parms[3]);
 		/* magnetic raw y-axis */
@@ -227,6 +225,7 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
 		/* orientation yaw */
+		break;
 		input_set_abs_params(ecs_data_device, ABS_RX, 
 			parms[0], parms[1], parms[2], parms[3]);
 		break;
@@ -236,6 +235,7 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
 		/* orientation pitch */
+		break;
 		input_set_abs_params(ecs_data_device, ABS_RY, 
 			parms[0], parms[1], parms[2], parms[3]);
 		break;
@@ -245,6 +245,7 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
 		/* orientation roll */
+		break;
 		input_set_abs_params(ecs_data_device, ABS_RZ, 
 			parms[0], parms[1], parms[2], parms[3]);
 		break;
@@ -332,9 +333,11 @@ static int __init ecompass_init(void)
 	/* acceleration x-axis */
 	input_set_abs_params(ecs_data_device, ABS_X, 
 		-32768*4, 32768*4, 0, 0);
+
 	/* acceleration y-axis */
 	input_set_abs_params(ecs_data_device, ABS_Y, 
 		-32768*4, 32768*4, 0, 0);
+
 	/* acceleration z-axis */
 	input_set_abs_params(ecs_data_device, ABS_Z, 
 		-32768*4, 32768*4, 0, 0);
@@ -342,28 +345,32 @@ static int __init ecompass_init(void)
 	/* 32768 == 1gauss, range -4gauss ~ +4gauss */
 	/* magnetic raw x-axis */
 	input_set_abs_params(ecs_data_device, ABS_HAT0X, 
-		-32768*4, 32768*4, 0, 0);
+		0, 0, 0, 0);
+
 	/* magnetic raw y-axis */
 	input_set_abs_params(ecs_data_device, ABS_HAT0Y, 
-		-32768*4, 32768*4, 0, 0);
+		0, 0, 0, 0);
+
 	/* magnetic raw z-axis */
 	input_set_abs_params(ecs_data_device, ABS_BRAKE, 
-		-32768*4, 32768*4, 0, 0);
+		0, 0, 0, 0);
 
 	/* 65536 == 360degree */
 	/* orientation yaw, 0 ~ 360 */
 	input_set_abs_params(ecs_data_device, ABS_RX, 
 		0, 65536, 0, 0);
+
 	/* orientation pitch, -180 ~ 180 */
 	input_set_abs_params(ecs_data_device, ABS_RY, 
 		-65536/2, 65536/2, 0, 0);
+
 	/* orientation roll, -90 ~ 90 */
 	input_set_abs_params(ecs_data_device, ABS_RZ, 
 		-65536/4, 65536/4, 0, 0);
 
 	/* proximity distance, 1 ~ 110 mm*/
 	input_set_abs_params(ecs_data_device, ABS_DISTANCE, 
-		1, 110, 0, 0);
+		1, 30, 0, 0);
 
 	/* ambient light lux, 5 ~ 65535 Lux*/
 	input_set_abs_params(ecs_data_device, ABS_VOLUME, 
@@ -415,4 +422,3 @@ module_exit(ecompass_exit);
 MODULE_AUTHOR("Robbie Cao<hjcao@memsic.com>");
 MODULE_DESCRIPTION("MEMSIC eCompass Driver");
 MODULE_LICENSE("GPL");
-

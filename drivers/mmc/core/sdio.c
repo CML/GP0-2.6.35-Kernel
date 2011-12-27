@@ -277,6 +277,23 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
 
+#if 1
+	{
+		struct mmc_card tempcard;
+		tempcard.host = host;
+		mmc_io_rw_direct(&tempcard, 1, 0, SDIO_CCCR_ABORT, 0x08, NULL);
+	}
+
+	/*
+	 * Since we're changing the OCR value, we seem to
+	 * need to tell some cards to go back to the idle
+	 * state.  We wait 1ms to give cards time to
+	 * respond.
+	 */
+	mmc_go_idle(host);
+#endif
+
+
 	/*
 	 * Inform the card of the voltage
 	 */
@@ -319,6 +336,14 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 		err = mmc_send_relative_addr(host, &card->rca);
 		if (err)
 			goto remove;
+
+		/*
+		 * Update oldcard with the new RCA received from the SDIO
+		 * device -- we're doing this so that it's updated in the
+		 * "card" struct when oldcard overwrites that later.
+		 */
+		if (oldcard)
+			oldcard->rca = card->rca;
 
 		mmc_set_bus_mode(host, MMC_BUSMODE_PUSHPULL);
 	}
@@ -371,7 +396,11 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			goto err;
 		}
 		card = oldcard;
+#if 1
+		/* continue to setup high speed, wide and clock rate */
+#else
 		return 0;
+#endif
 	}
 
 	/*
@@ -479,6 +508,12 @@ static int mmc_sdio_suspend(struct mmc_host *host)
 			const struct dev_pm_ops *pmops = func->dev.driver->pm;
 			if (!pmops || !pmops->suspend || !pmops->resume) {
 				/* force removal of entire card in that case */
+#if 1
+				mmc_sdio_remove(host);
+				mmc_claim_host(host);
+				mmc_detach_bus(host);
+				mmc_release_host(host);                
+#endif
 				err = -ENOSYS;
 			} else
 				err = pmops->suspend(&func->dev);
@@ -538,6 +573,17 @@ static int mmc_sdio_resume(struct mmc_host *host)
 			err = pmops->resume(&func->dev);
 		}
 	}
+#if 0
+	return err;
+#else
+	if (err) {
+		mmc_sdio_remove(host);
+
+		mmc_claim_host(host);
+		mmc_detach_bus(host);
+		mmc_release_host(host);
+	}
+#endif
 
 	return err;
 }

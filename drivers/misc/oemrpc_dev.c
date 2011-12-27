@@ -108,4 +108,3 @@ MODULE_VERSION("1.0");
 MODULE_ALIAS("platform:version");
 
 #endif // CONFIG_BOARD_PW28
-

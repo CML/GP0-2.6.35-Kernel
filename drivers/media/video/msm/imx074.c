@@ -28,7 +28,7 @@
 #include "imx074.h"
 
 /*SENSOR REGISTER DEFINES*/
-#define	IMX074_EEPROM_SLAVE_ADDR			0x52
+
 #define REG_GROUPED_PARAMETER_HOLD			0x0104
 #define GROUPED_PARAMETER_HOLD_OFF			0x00
 #define GROUPED_PARAMETER_HOLD				0x01
@@ -228,60 +228,6 @@ static int32_t imx074_i2c_read(unsigned short raddr,
 	*rdata = (rlen == 2 ? buf[0] << 8 | buf[1] : buf[0]);
 	return rc;
 }
-
-static int imx074_af_i2c_rxdata_b(unsigned short saddr,
-	unsigned char *rxdata, int length)
-{
-	struct i2c_msg msgs[] = {
-		{
-		.addr  = saddr,
-		.flags = 0,
-		.len   = 1,
-		.buf   = rxdata,
-		},
-		{
-		.addr  = saddr,
-		.flags = I2C_M_RD,
-		.len   = 1,
-		.buf   = rxdata,
-		},
-	};
-
-	if (i2c_transfer(imx074_client->adapter, msgs, 2) < 0) {
-		CDBG("imx074_i2c_rxdata_b failed!\n");
-		return -EIO;
-	}
-
-	return 0;
-}
-
-static int32_t imx074_i2c_read_w_eeprom(unsigned short raddr,
-	unsigned short *rdata)
-{
-	int32_t rc;
-	unsigned char buf;
-	if (!rdata)
-		return -EIO;
-	/* Read 2 bytes in sequence */
-	buf = (raddr & 0x00FF);
-	rc = imx074_af_i2c_rxdata_b(IMX074_EEPROM_SLAVE_ADDR, &buf, 1);
-	if (rc < 0) {
-		CDBG("imx074_i2c_read_eeprom 0x%x failed!\n", raddr);
-		return rc;
-	}
-	*rdata = buf<<8;
-
-	/* Read Second byte of data */
-	buf = (raddr & 0x00FF) + 1;
-	rc = imx074_af_i2c_rxdata_b(IMX074_EEPROM_SLAVE_ADDR, &buf, 1);
-	if (rc < 0) {
-		CDBG("imx074_i2c_read_eeprom 0x%x failed!\n", raddr);
-		return rc;
-	}
-	*rdata |= buf;
-	return rc;
-}
-
 static int32_t imx074_i2c_write_b_sensor(unsigned short waddr, uint8_t bdata)
 {
 	int32_t rc = -EFAULT;
@@ -413,17 +359,8 @@ static int32_t imx074_set_fps(struct fps_cfg	*fps)
 {
 	uint16_t total_lines_per_frame;
 	int32_t rc = 0;
-	imx074_ctrl->fps_divider = fps->fps_div;
-	imx074_ctrl->pict_fps_divider = fps->pict_fps_div;
-	if (imx074_ctrl->curr_res  == QTR_SIZE) {
-		total_lines_per_frame = (uint16_t)(((IMX074_QTR_SIZE_HEIGHT +
-			IMX074_VER_QTR_BLK_LINES) *
-			imx074_ctrl->fps_divider) / 0x400);
-	} else {
-		total_lines_per_frame = (uint16_t)(((IMX074_FULL_SIZE_HEIGHT +
-			IMX074_VER_FULL_BLK_LINES) *
-			imx074_ctrl->pict_fps_divider) / 0x400);
-	}
+	total_lines_per_frame = (uint16_t)(((IMX074_QTR_SIZE_HEIGHT +
+		IMX074_VER_QTR_BLK_LINES) * imx074_ctrl->fps_divider) / 0x400);
 	if (imx074_i2c_write_b_sensor(REG_FRAME_LENGTH_LINES_HI,
 		((total_lines_per_frame & 0xFF00) >> 8)) < 0)
 		return rc;
@@ -443,17 +380,13 @@ static int32_t imx074_write_exp_gain(uint16_t gain, uint32_t line)
 	int32_t rc = -1;
 
 	CDBG("imx074_write_exp_gain : gain = %d line = %d", gain, line);
-	if (imx074_ctrl->curr_res  == QTR_SIZE) {
+	if (imx074_ctrl->curr_res  == QTR_SIZE)
 		frame_length_lines = IMX074_QTR_SIZE_HEIGHT +
 			IMX074_VER_QTR_BLK_LINES;
-		frame_length_lines = frame_length_lines *
-			imx074_ctrl->fps_divider / 0x400;
-	} else {
+	else
 		frame_length_lines = IMX074_FULL_SIZE_HEIGHT +
 			IMX074_VER_FULL_BLK_LINES;
-		frame_length_lines = frame_length_lines *
-			imx074_ctrl->pict_fps_divider / 0x400;
-	}
+
 	if (line > (frame_length_lines - IMX074_OFFSET))
 		frame_length_lines = line + IMX074_OFFSET;
 
@@ -961,85 +894,10 @@ static int32_t imx074_power_down(void)
 }
 static int imx074_probe_init_done(const struct msm_camera_sensor_info *data)
 {
-	gpio_set_value_cansleep(data->sensor_reset, 0);
 	gpio_direction_input(data->sensor_reset);
 	gpio_free(data->sensor_reset);
 	return 0;
 }
-
-static int imx074_read_eeprom_data(struct sensor_cfg_data *cfg)
-{
-	int32_t rc = 0;
-	uint16_t eepromdata = 0;
-	uint8_t addr = 0;
-
-	addr = 0x10;
-	rc = imx074_i2c_read_w_eeprom(addr, &eepromdata);
-	if (rc < 0) {
-		CDBG("%s: Error Reading EEPROM @ 0x%x\n", __func__, addr);
-		return rc;
-	}
-	cfg->cfg.calib_info.r_over_g = eepromdata;
-
-	addr = 0x12;
-	rc = imx074_i2c_read_w_eeprom(addr, &eepromdata);
-	if (rc < 0) {
-		CDBG("%s: Error Reading EEPROM @ 0x%x\n", __func__, addr);
-		return rc;
-	}
-	cfg->cfg.calib_info.b_over_g = eepromdata;
-
-	addr = 0x14;
-	rc = imx074_i2c_read_w_eeprom(addr, &eepromdata);
-	if (rc < 0) {
-		CDBG("%s: Error Reading EEPROM @ 0x%x\n", __func__, addr);
-		return rc;
-	}
-	cfg->cfg.calib_info.gr_over_gb = eepromdata;
-
-	addr = 0x1A;
-	rc = imx074_i2c_read_w_eeprom(addr, &eepromdata);
-	if (rc < 0) {
-		CDBG("%s: Error Reading EEPROM @ 0x%x\n", __func__, addr);
-		return rc;
-	}
-	cfg->cfg.calib_info.macro_2_inf = eepromdata;
-
-	addr = 0x1C;
-	rc = imx074_i2c_read_w_eeprom(addr, &eepromdata);
-	if (rc < 0) {
-		CDBG("%s: Error Reading EEPROM @ 0x%x\n", __func__, addr);
-		return rc;
-	}
-	cfg->cfg.calib_info.inf_2_macro = eepromdata;
-
-	addr = 0x1E;
-	rc = imx074_i2c_read_w_eeprom(addr, &eepromdata);
-	if (rc < 0) {
-		CDBG("%s: Error Reading EEPROM @ 0x%x\n", __func__, addr);
-		return rc;
-	}
-	cfg->cfg.calib_info.stroke_amt = eepromdata;
-
-	addr = 0x20;
-	rc = imx074_i2c_read_w_eeprom(addr, &eepromdata);
-	if (rc < 0) {
-		CDBG("%s: Error Reading EEPROM @ 0x%x\n", __func__, addr);
-		return rc;
-	}
-	cfg->cfg.calib_info.af_pos_1m = eepromdata;
-
-	addr = 0x22;
-	rc = imx074_i2c_read_w_eeprom(addr, &eepromdata);
-	if (rc < 0) {
-		CDBG("%s: Error Reading EEPROM @ 0x%x\n", __func__, addr);
-		return rc;
-	}
-	cfg->cfg.calib_info.af_pos_inf = eepromdata;
-
-	return rc;
-}
-
 static int imx074_probe_init_sensor(const struct msm_camera_sensor_info *data)
 {
 	int32_t rc = 0;
@@ -1079,6 +937,7 @@ static int imx074_probe_init_sensor(const struct msm_camera_sensor_info *data)
 	goto init_probe_done;
 init_probe_fail:
 	CDBG("imx074_probe_init_sensor fails\n");
+	gpio_set_value_cansleep(data->sensor_reset, 0);
 	imx074_probe_init_done(data);
 init_probe_done:
 	CDBG(" imx074_probe_init_sensor finishes\n");
@@ -1131,12 +990,12 @@ int imx074_sensor_open_init(const struct msm_camera_sensor_info *data)
 		imx074_ctrl->sensordata = data;
 
 	/* enable mclk first */
-	msm_camio_clk_rate_set(IMX074_DEFAULT_MASTER_CLK_RATE);
+	msm_camio_clk_rate_set(24000000);
 	usleep_range(1000, 2000);
 	rc = imx074_probe_init_sensor(data);
 	if (rc < 0) {
 		CDBG("Calling imx074_sensor_open_init fail\n");
-		goto probe_fail;
+		goto init_fail;
 	}
 
 	rc = imx074_sensor_setting(REG_INIT, RES_PREVIEW);
@@ -1153,10 +1012,7 @@ int imx074_sensor_open_init(const struct msm_camera_sensor_info *data)
 		goto init_fail;
 	} else
 		goto init_done;
-probe_fail:
-	CDBG(" imx074_sensor_open_init probe fail\n");
-	kfree(imx074_ctrl);
-	return rc;
+
 init_fail:
 	CDBG(" imx074_sensor_open_init fail\n");
 	imx074_probe_init_done(data);
@@ -1311,15 +1167,6 @@ int imx074_sensor_config(void __user *argp)
 	case CFG_PWR_DOWN:
 		rc = imx074_power_down();
 			break;
-	case CFG_GET_CALIB_DATA:
-		rc = imx074_read_eeprom_data(&cdata);
-		if (rc < 0)
-			break;
-		if (copy_to_user((void *)argp,
-			&cdata,
-			sizeof(cdata)))
-			rc = -EFAULT;
-		break;
 	case CFG_MOVE_FOCUS:
 		rc =
 			imx074_move_focus(
@@ -1376,15 +1223,16 @@ static int imx074_sensor_probe(const struct msm_camera_sensor_info *info,
 		rc = -ENOTSUPP;
 		goto probe_fail;
 	}
-	msm_camio_clk_rate_set(IMX074_DEFAULT_MASTER_CLK_RATE);
+	msm_camio_clk_rate_set(24000000);
 	rc = imx074_probe_init_sensor(info);
 	if (rc < 0)
 		goto probe_fail;
 	s->s_init = imx074_sensor_open_init;
 	s->s_release = imx074_sensor_release;
 	s->s_config  = imx074_sensor_config;
-	s->s_mount_angle = info->sensor_platform_info->mount_angle;
+	s->s_mount_angle = 90;
 	imx074_probe_init_done(info);
+
 	return rc;
 
 probe_fail:

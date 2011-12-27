@@ -43,6 +43,7 @@ unsigned int kgsl_cache_enable;
 static uint32_t kgsl_ib_base;
 static uint32_t kgsl_ib_size;
 #endif
+
 static inline int kgsl_log_set(unsigned int *log_val, void *data, u64 val)
 {
 	*log_val = min((unsigned int)val, (unsigned int)KGSL_LOG_LEVEL_MAX);

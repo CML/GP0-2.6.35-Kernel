@@ -62,4 +62,3 @@
 
 
 #endif /* __ECOMPASS_H__ */
-

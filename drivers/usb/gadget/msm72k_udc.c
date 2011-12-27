@@ -46,6 +46,10 @@
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
 
+#ifdef CONFIG_BOARD_PW28
+	extern void update_usb_to_gui(int i);
+#endif
+
 static const char driver_name[] = "msm72k_udc";
 
 /* #define DEBUG */
@@ -281,13 +285,31 @@ static ssize_t print_switch_state(struct switch_dev *sdev, char *buf)
 
 static inline enum chg_type usb_get_chg_type(struct usb_info *ui)
 {
+#ifdef CONFIG_BOARD_PW28
+	if ((readl(USB_PORTSC) & PORTSC_LS) == PORTSC_LS)
+	{
+		update_usb_to_gui(3);	// CHARGER_TYPE_USB_WALL
+		return USB_CHG_TYPE__WALLCHARGER;
+	}
+	else
+	{
+		update_usb_to_gui(2);	// CHARGER_TYPE_USB_PC
+		return USB_CHG_TYPE__SDP;
+	}
+#else
 	if ((readl(USB_PORTSC) & PORTSC_LS) == PORTSC_LS)
 		return USB_CHG_TYPE__WALLCHARGER;
 	else
 		return USB_CHG_TYPE__SDP;
+#endif
 }
 
-#define USB_WALLCHARGER_CHG_CURRENT 1800
+#ifdef CONFIG_BOARD_PW28
+	#define USB_WALLCHARGER_CHG_CURRENT 700
+#else
+	#define USB_WALLCHARGER_CHG_CURRENT 1800
+#endif
+
 static int usb_get_max_power(struct usb_info *ui)
 {
 	struct msm_otg *otg = to_msm_otg(ui->xceiv);
@@ -310,7 +332,11 @@ static int usb_get_max_power(struct usb_info *ui)
 	if (temp == USB_CHG_TYPE__INVALID)
 		return -ENODEV;
 
+#ifdef CONFIG_BOARD_PW28
+	if (temp == USB_CHG_TYPE__WALLCHARGER || temp == USB_CHG_TYPE__SDP)
+
 	if (temp == USB_CHG_TYPE__WALLCHARGER)
+#endif
 		return USB_WALLCHARGER_CHG_CURRENT;
 
 	if (suspended || !configured)
@@ -1518,6 +1544,10 @@ static void usb_do_work(struct work_struct *w)
 
 				dev_dbg(&ui->pdev->dev,
 					"msm72k_udc: ONLINE -> OFFLINE\n");
+
+#ifdef CONFIG_BOARD_PW28
+				update_usb_to_gui(0);
+#endif
 
 				atomic_set(&ui->running, 0);
 				atomic_set(&ui->remote_wakeup, 0);

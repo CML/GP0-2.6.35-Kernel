@@ -290,7 +290,6 @@ int msm_gemini_we_pingpong_irq(struct msm_gemini_device *pgmn_dev,
 		rc = msm_gemini_core_we_buf_update(buf_out);
 		kfree(buf_out);
 	} else {
-		msm_gemini_core_we_buf_reset(buf_in);
 		GMN_DBG("%s:%d] no output buffer\n", __func__, __LINE__);
 		rc = -2;
 	}
@@ -468,8 +467,7 @@ int msm_gemini_input_buf_enqueue(struct msm_gemini_device *pgmn_dev,
 		(int) buf_cmd.vaddr, buf_cmd.y_len);
 
 	buf_p->y_buffer_addr    = msm_gemini_platform_v2p(buf_cmd.fd,
-		buf_cmd.y_len + buf_cmd.cbcr_len, &buf_p->file)
-		+ buf_cmd.offset;
+		buf_cmd.y_len + buf_cmd.cbcr_len, &buf_p->file);
 	buf_p->y_len          = buf_cmd.y_len;
 
 	buf_p->cbcr_buffer_addr = buf_p->y_buffer_addr + buf_cmd.y_len;
@@ -577,7 +575,7 @@ int __msm_gemini_release(struct msm_gemini_device *pgmn_dev)
 	msm_gemini_q_cleanup(&pgmn_dev->output_rtn_q);
 	msm_gemini_outbuf_q_cleanup(&pgmn_dev->output_buf_q);
 	msm_gemini_q_cleanup(&pgmn_dev->input_rtn_q);
-	msm_gemini_outbuf_q_cleanup(&pgmn_dev->input_buf_q);
+	msm_gemini_q_cleanup(&pgmn_dev->input_buf_q);
 
 	if (pgmn_dev->open_count)
 		GMN_PR_ERR(KERN_ERR "%s: multiple opens\n", __func__);

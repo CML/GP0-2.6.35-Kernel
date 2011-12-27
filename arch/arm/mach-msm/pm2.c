@@ -577,7 +577,7 @@ static int msm_pm_poll_state(int nr_grps, struct msm_pm_polled_group *grps)
  *****************************************************************************/
 
 #define SCLK_HZ (32768)
-#define MSM_PM_SLEEP_TICK_LIMIT (0x54600000)
+#define MSM_PM_SLEEP_TICK_LIMIT (0x6DDD000)
 
 #ifdef CONFIG_MSM_SLEEP_TIME_OVERRIDE
 static int msm_pm_sleep_time_override;

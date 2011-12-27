@@ -55,7 +55,7 @@ struct cm3623_sensor_data {
     bool fake_data;
 };
 
-static struct wake_lock prx_wake_lock;
+struct wake_lock prx_wake_lock;
 
 static ssize_t cm3623_als_read(struct file *, char __user *, size_t, loff_t *) ;
 static ssize_t cm3623_ps_read(struct file *, char __user *, size_t, loff_t *) ;

@@ -50,9 +50,9 @@
 
 #ifdef CONFIG_FB_MSM_LOGO
 #ifdef CONFIG_BOARD_PW28
-#define INIT_IMAGE_FILE "/320_480logo.rle"
+	#define INIT_IMAGE_FILE "/320_480logo.rle"
 #else
-#define INIT_IMAGE_FILE "/initlogo.rle"
+	#define INIT_IMAGE_FILE "/initlogo.rle"
 #endif
 extern int load_565rle_image(char *filename);
 #endif
@@ -339,6 +339,7 @@ static int msm_fb_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	mfd->panel_info.frame_count = 0;
+
 #ifdef CONFIG_BOARD_PW28
 	mfd->bl_level = mfd->panel_info.bl_max;
 #else
@@ -347,6 +348,7 @@ static int msm_fb_probe(struct platform_device *pdev)
 #ifdef CONFIG_FB_MSM_OVERLAY
 	mfd->overlay_play_enable = 1;
 #endif
+
 	rc = msm_fb_register(mfd);
 	if (rc)
 		return rc;
@@ -613,7 +615,7 @@ static struct platform_driver msm_fb_driver = {
 		   },
 };
 
-#if defined(CONFIG_HAS_EARLYSUSPEND) && defined(CONFIG_FB_MSM_MDP303)
+#if defined(CONFIG_HAS_EARLYSUSPEND) && defined(CONFIG_FB_MSM_OVERLAY)
 static void memset32_io(u32 __iomem *_ptr, u32 val, size_t count)
 {
 	count >>= 2;
@@ -627,7 +629,7 @@ static void msmfb_early_suspend(struct early_suspend *h)
 {
 	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
 						    early_suspend);
-#if defined(CONFIG_FB_MSM_MDP303)
+#ifdef CONFIG_FB_MSM_OVERLAY
 	/*
 	* For MDP with overlay, set framebuffer with black pixels
 	* to show black screen on HDMI.
@@ -1074,7 +1076,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 			    panel_info->yres * mfd->fb_page,
 			    msm_fb_line_length(mfd->index,
 					       panel_info->mode2_xres,
-					       bpp) *
+					       (panel_info->mode2_bpp+7)/8) *
 			    panel_info->mode2_yres * mfd->fb_page), PAGE_SIZE);
 
 
@@ -2675,6 +2677,7 @@ static void msmfb_set_color_conv(struct mdp_ccs *p)
 			writel(p->bv[i], MDP_CSC_POST_BV2n(i));
 		#endif
 
+		dsb();
 		/* MDP cmd block disable */
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	} else {
@@ -2687,6 +2690,7 @@ static void msmfb_set_color_conv(struct mdp_ccs *p)
 		for (i = 0; i < MDP_BV_SIZE; i++)
 			writel(p->bv[i], MDP_CSC_PRE_BV1n(i));
 
+		dsb();
 		/* MDP cmd block disable */
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	}
@@ -2870,6 +2874,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 			mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 			writel(grp_id, MDP_FULL_BYPASS_WORD43);
+			dsb();
 			mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF,
 				      FALSE);
 			break;

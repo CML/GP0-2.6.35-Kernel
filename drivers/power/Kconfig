@@ -149,8 +149,15 @@ config BATTERY_MSM
 	help
 	  Say Y to enable support for the battery in Qualcomm MSM.
 
-config SIMCUST_BATTERY_PERCENT_FOR_PE28
-	bool "MSM battery percent cust for pe28"
+config BATTERY_PW28
+	bool "Geeksphone ZERO battery driver"
+	depends on ARCH_MSM
+	default n
+	help
+	  Say Y to enable support for the battery in Geeksphone ZERO.
+
+config CUSTOM_BATTERY_PERCENT_FOR_PW28
+	bool "Battery percent cust for PW28"
 	depends on ARCH_MSM
 	default n
 	help

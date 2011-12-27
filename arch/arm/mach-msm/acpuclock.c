@@ -210,6 +210,14 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 0, 400000, ACPU_PLL_2, 2, 2, 133333, 2, 5, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 6, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 200000, 2, 7, 122880 },
+#ifdef CONFIG_CPU_OC
+	{ 1, 652800, ACPU_PLL_0, 4, 0, 217600, 2, 7, 122880 },
+	{ 1, 672000, ACPU_PLL_0, 4, 0, 224000, 2, 7, 122880 },
+	{ 1, 691200, ACPU_PLL_0, 4, 0, 230400, 2, 7, 122880 },
+	{ 1, 710400, ACPU_PLL_0, 4, 0, 236800, 2, 7, 122880 },
+	{ 1, 729600, ACPU_PLL_0, 4, 0, 243200, 2, 7, 122880 },
+	{ 1, 748800, ACPU_PLL_0, 4, 0, 249600, 2, 7, 122880 },
+#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0}, {0, 0, 0} }
 };
 
@@ -436,6 +444,14 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 		writel(reg_clksel, A11S_CLK_SEL_ADDR);
 	}
 
+	// Perform overclocking if requested
+	if(hunt_s->a11clk_khz>600000) {
+		// Change the speed of PLL0
+		writel(hunt_s->a11clk_khz/19200, PLLn_L_VAL(0));
+		cpu_relax();
+		udelay(50);
+	}
+
 	/* Program clock source and divider */
 	reg_clkctl = readl(A11S_CLK_CNTL_ADDR);
 	reg_clkctl &= ~(0xFF << (8 * src_sel));
@@ -446,6 +462,14 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	/* Program clock source selection */
 	reg_clksel ^= 1;
 	writel(reg_clksel, A11S_CLK_SEL_ADDR);
+
+	// Recover from overclocking
+	if(hunt_s->a11clk_khz<=600000) {
+		// Restore the speed of PLL0
+		writel(PLL_960_MHZ, PLLn_L_VAL(0));
+		cpu_relax();
+		udelay(50);
+	}
 
 	/*
 	 * If the new clock divider is lower than the previous, then
@@ -733,6 +757,11 @@ static void __init acpu_freq_tbl_fixup(void)
 		cpu_relax();
 		udelay(50);
 	} while (pll1_l == 0);
+	/* Overclock PLL2 to it's maximum frequency */
+	/* This little trick overclocks the default */
+	writel(PLL_1200_MHZ, PLLn_L_VAL(2));
+	cpu_relax();
+	udelay(50);
 	do {
 		pll2_l = readl(PLLn_L_VAL(2)) & 0x3f;
 		cpu_relax();
@@ -927,8 +956,6 @@ void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *clkdata)
 	BUG_ON(IS_ERR(drv_state.ebi1_clk));
 
 	mutex_init(&drv_state.lock);
-	if (cpu_is_msm7x27())
-		shared_pll_control_init();
 	drv_state.acpu_switch_time_us = clkdata->acpu_switch_time_us;
 	drv_state.max_speed_delta_khz = clkdata->max_speed_delta_khz;
 	drv_state.vdd_switch_time_us = clkdata->vdd_switch_time_us;
@@ -939,7 +966,10 @@ void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *clkdata)
 		msm7x25_acpu_pll_hw_bug_fix();
 	acpuclk_init();
 	lpj_init();
+
 	print_acpu_freq_tbl();
+	if (cpu_is_msm7x27())
+		shared_pll_control_init();
 #ifdef CONFIG_CPU_FREQ_MSM
 	cpufreq_table_init();
 	cpufreq_frequency_table_get_attr(freq_table, smp_processor_id());

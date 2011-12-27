@@ -4,7 +4,6 @@ config MSM_KGSL
 	depends on FB && ARM && ARCH_MSM && !MSM_HW3D && ANDROID_PMEM
 	select GENERIC_ALLOCATOR
 	select FW_LOADER
-	select RELAY
 	---help---
 	  3D graphics driver. Required to use hardware accelerated
 	  OpenGL ES 2.0 and 1.1.
@@ -13,7 +12,6 @@ config MSM_KGSL_CFF_DUMP
 	bool "Enable KGSL Common File Format (CFF) Dump Feature [Use with caution]"
 	default n
 	depends on MSM_KGSL
-	select RELAY
 	---help---
 	  This is an analysis and diagnostic feature only, and should only be
 	  turned on during KGSL GPU diagnostics and will slow down the KGSL

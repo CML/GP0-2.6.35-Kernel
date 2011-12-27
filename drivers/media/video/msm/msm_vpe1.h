@@ -10,8 +10,8 @@
  *       disclaimer in the documentation and/or other materials provided
  *       with the distribution.
  *     * Neither the name of Code Aurora Forum, Inc. nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
+ *		 contributors may be used to endorse or promote products derived
+ *		 from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -90,8 +90,7 @@
 #define VPE_CGC_ENABLE_VALUE          0xffff
 #define VPE_DEFAULT_SCALE_CONFIG      0x3c
 
-#define VPE_NORMAL_MODE_CLOCK_RATE   150000000
-#define VPE_TURBO_MODE_CLOCK_RATE   200000000
+#define VPE_CLOCK_RATE   160000000
 /**************************************************/
 /*********** Start of command id ******************/
 /**************************************************/
@@ -109,8 +108,6 @@ enum VPE_CMD_ID_ENUM {
 	VPE_ROTATION_CFG_TYPE, /* 10 */
 	VPE_AXI_OUT_CFG,
 	VPE_CMD_DIS_OFFSET_CFG,
-	VPE_ENABLE,
-	VPE_DISABLE,
 };
 
 /* Length of each command.  In bytes.  (payload only) */
@@ -141,15 +138,7 @@ struct vpe_isr_queue_cmd_type {
 };
 
 enum VPE_MESSAGE_ID {
-	MSG_ID_VPE_OUTPUT_V = 7, /* To match with that of VFE */
-	MSG_ID_VPE_OUTPUT_ST_L,
-	MSG_ID_VPE_OUTPUT_ST_R,
-};
-
-enum vpe_state {
-	VPE_STATE_IDLE,
-	VPE_STATE_INIT,
-	VPE_STATE_ACTIVE,
+    MSG_ID_VPE_OUTPUT_V = 7, /* To match with that of VFE */
 };
 
 struct vpe_device_type {
@@ -162,15 +151,14 @@ struct vpe_device_type {
 };
 
 struct dis_offset_type {
-	int32_t dis_offset_x;
-	int32_t dis_offset_y;
-	uint32_t frame_id;
+    int32_t  dis_offset_x;
+	int32_t  dis_offset_y;
+    uint32_t  frame_id;
 };
 
 struct vpe_ctrl_type {
 	spinlock_t        tasklet_lock;
 	spinlock_t        state_lock;
-	spinlock_t        ops_lock;
 
 	struct list_head  tasklet_q;
 	void              *syncdata;
@@ -178,20 +166,15 @@ struct vpe_ctrl_type {
 	void              *extdata;
 	uint32_t          extlen;
 	struct msm_vpe_callback *resp;
-	uint32_t          in_h_w;
+	uint32_t           in_h_w;
 	uint32_t          out_h;  /* this is BEFORE rotation. */
 	uint32_t          out_w;  /* this is BEFORE rotation. */
 	uint32_t          dis_en;
+	uint32_t          state;
 	struct timespec   ts;
 	struct dis_offset_type   dis_offset;
 	uint32_t          pcbcr_before_dis;
 	uint32_t          pcbcr_dis_offset;
-	int               output_type;
-	int               frame_pack;
-	uint8_t           pad_2k_bool;
-	enum vpe_state    state;
-	unsigned long     out_y_addr;
-	unsigned long     out_cbcr_addr;
 };
 
 /*
@@ -251,17 +234,15 @@ struct phase_val_t {
 	int32_t phase_step_y;
 };
 
-extern struct vpe_ctrl_type *vpe_ctrl;
+extern struct vpe_ctrl_type    *vpe_ctrl;
 
 int msm_vpe_open(void);
 int msm_vpe_release(void);
 int msm_vpe_reg(struct msm_vpe_callback *presp);
 void msm_send_frame_to_vpe(uint32_t pyaddr, uint32_t pcbcraddr,
-	struct timespec *ts, int output_id);
+				struct timespec *ts);
 int msm_vpe_config(struct msm_vpe_cfg_cmd *cmd, void *data);
 int msm_vpe_cfg_update(void *pinfo);
-void msm_vpe_offset_update(int frame_pack, uint32_t pyaddr, uint32_t pcbcraddr,
-	struct timespec *ts, int output_id, struct msm_st_half st_half,
-	int frameid);
+
 #endif /*_msm_vpe1_h_*/
 

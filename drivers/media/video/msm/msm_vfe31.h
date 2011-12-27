@@ -170,7 +170,6 @@
 #define VFE_AF_PINGPONG_STATUS_BIT       0x100
 #define VFE_AWB_PINGPONG_STATUS_BIT      0x200
 
-#define HFR_MODE_OFF 1
 
 enum VFE31_DMI_RAM_SEL {
 	 NO_MEM_SELECTED          = 0,
@@ -191,14 +190,6 @@ enum VFE31_DMI_RAM_SEL {
 enum  VFE_STATE {
 	VFE_STATE_IDLE,
 	VFE_STATE_ACTIVE
-};
-
-enum  vfe_recording_state {
-	VFE_REC_STATE_IDLE,
-	VFE_REC_STATE_START_REQUESTED,
-	VFE_REC_STATE_STARTED,
-	VFE_REC_STATE_STOP_REQUESTED,
-	VFE_REC_STATE_STOPPED,
 };
 
 #define V31_DUMMY_0               0
@@ -309,8 +300,6 @@ enum  vfe_recording_state {
 #define V31_ASYNC_TIMER_SETTING   105
 #define V31_LIVESHOT              106
 #define V31_ZSL                   107
-#define V31_STEREOCAM             108
-
 #define V31_CAMIF_OFF             0x000001E4
 #define V31_CAMIF_LEN             32
 
@@ -333,7 +322,7 @@ enum  vfe_recording_state {
 #define V31_OUT_CLAMP_OFF         0x00000524
 #define V31_OUT_CLAMP_LEN         8
 
-#define V31_OPERATION_CFG_LEN     32
+#define V31_OPERATION_CFG_LEN     28
 
 #define V31_AXI_OUT_OFF           0x00000038
 #define V31_AXI_OUT_LEN           188
@@ -391,7 +380,7 @@ enum  vfe_recording_state {
 #define V31_CHROMA_SUP_OFF 0x000003E8
 #define V31_CHROMA_SUP_LEN 12
 
-#define V31_MCE_OFF 0x000003F4
+#define V31_MCE_OFF 0x000003E8
 #define V31_MCE_LEN 36
 #define V31_STATS_AF_OFF 0x0000053c
 #define V31_STATS_AF_LEN 16
@@ -573,8 +562,6 @@ enum VFE_YUV_INPUT_COSITING_MODE {
 #define VFE31_GAMMA_NUM_ENTRIES  64
 
 #define VFE31_LA_TABLE_LENGTH    64
-
-#define VFE31_HIST_TABLE_LENGTH  256
 
 struct vfe_cmds_demosaic_abf {
 	uint8_t   enable;
@@ -775,46 +762,40 @@ enum VFE31_MESSAGE_ID {
 	MSG_ID_OUTPUT_S,
 	MSG_ID_OUTPUT_V,
 	MSG_ID_SNAPSHOT_DONE,
-	MSG_ID_COMMON,
-	MSG_ID_EPOCH1, /* 10 */
+	MSG_ID_STATS_AEC,
+	MSG_ID_STATS_AF, /* 10 */
+	MSG_ID_STATS_AWB,
+	MSG_ID_STATS_RS,
+	MSG_ID_STATS_CS,
+	MSG_ID_STATS_IHIST,
+	MSG_ID_STATS_SKIN,
+	MSG_ID_EPOCH1,
 	MSG_ID_EPOCH2,
 	MSG_ID_SYNC_TIMER0_DONE,
 	MSG_ID_SYNC_TIMER1_DONE,
-	MSG_ID_SYNC_TIMER2_DONE,
+	MSG_ID_SYNC_TIMER2_DONE, /* 20 */
 	MSG_ID_ASYNC_TIMER0_DONE,
 	MSG_ID_ASYNC_TIMER1_DONE,
 	MSG_ID_ASYNC_TIMER2_DONE,
 	MSG_ID_ASYNC_TIMER3_DONE,
 	MSG_ID_AE_OVERFLOW,
-	MSG_ID_AF_OVERFLOW, /* 20 */
+	MSG_ID_AF_OVERFLOW,
 	MSG_ID_AWB_OVERFLOW,
 	MSG_ID_RS_OVERFLOW,
 	MSG_ID_CS_OVERFLOW,
-	MSG_ID_IHIST_OVERFLOW,
+	MSG_ID_IHIST_OVERFLOW, /* 30 */
 	MSG_ID_SKIN_OVERFLOW,
 	MSG_ID_AXI_ERROR,
 	MSG_ID_CAMIF_OVERFLOW,
 	MSG_ID_VIOLATION,
 	MSG_ID_CAMIF_ERROR,
-	MSG_ID_BUS_OVERFLOW, /* 30 */
+	MSG_ID_BUS_OVERFLOW,
 	MSG_ID_SOF_ACK,
-	MSG_ID_STOP_REC_ACK,
 };
 
-struct stats_buffer {
-	uint32_t aec;
-	uint32_t awb;
-	uint32_t af;
-	uint32_t ihist;
-	uint32_t rs;
-	uint32_t cs;
-	uint32_t skin;
-};
-
-struct vfe_msg_stats {
-	struct stats_buffer buff;
+struct vfe_msg_stats{
+	uint32_t    buffer;
 	uint32_t    frameCounter;
-	uint32_t    status_bits;
 };
 
 
@@ -841,7 +822,6 @@ struct vfe31_irq_status {
 	uint32_t camifStatus;
 	uint32_t demosaicStatus;
 	uint32_t asfMaxEdge;
-	uint32_t vfePingPongStatus;
 };
 
 struct vfe_msg_output {
@@ -876,19 +856,19 @@ struct vfe31_cmd_type {
 	uint16_t id;
 	uint32_t length;
 	uint32_t offset;
-	uint32_t flag;
+  uint32_t flag;
 };
 
 struct vfe31_free_buf {
-	struct list_head node;
+	spinlock_t f_lock;
+	uint8_t available;
 	uint32_t paddr;
 	uint32_t y_off;
 	uint32_t cbcr_off;
 };
 
 struct vfe31_output_ch {
-	struct list_head free_buf_head;
-	spinlock_t free_buf_lock;
+	struct vfe31_free_buf free_buf;
 	uint16_t output_fmt;
 	int8_t ch0;
 	int8_t ch1;
@@ -923,8 +903,6 @@ struct vfe31_output_ch {
 #define VFE31_IMASK_STATS_IHIST_BUS_OVFL      (0x00000001<<19)
 #define VFE31_IMASK_STATS_SKIN_BUS_OVFL       (0x00000001<<20)
 #define VFE31_IMASK_AXI_ERROR                 (0x00000001<<21)
-
-#define VFE_COM_STATUS 0x000FE000
 
 struct vfe31_output_path {
 	uint16_t output_mode;     /* bitmask  */
@@ -1030,12 +1008,9 @@ struct vfe31_ctrl_type {
 	spinlock_t  update_ack_lock;
 	spinlock_t  io_lock;
 
-	int8_t aec_ack_pending;
-	int8_t awb_ack_pending;
-	int8_t af_ack_pending;
-	int8_t ihist_ack_pending;
-	int8_t rs_ack_pending;
-	int8_t cs_ack_pending;
+	spinlock_t  aec_ack_lock;
+	spinlock_t  awb_ack_lock;
+	spinlock_t  af_ack_lock;
 
 	struct msm_vfe_callback *resp;
 	uint32_t extlen;
@@ -1045,7 +1020,8 @@ struct vfe31_ctrl_type {
 	atomic_t stop_ack_pending;
 	int8_t reset_ack_pending;
 	int8_t update_ack_pending;
-	enum vfe_recording_state recording_state;
+	int8_t req_start_video_rec;
+	int8_t req_stop_video_rec;
 	int8_t output0_available;
 	int8_t output1_available;
 	int8_t update_gamma;
@@ -1060,7 +1036,6 @@ struct vfe31_ctrl_type {
 	struct resource *vfeio;
 
 	uint32_t stats_comp;
-	uint32_t hfr_mode;
 	atomic_t vstate;
 	uint32_t vfe_capture_count;
 	uint32_t sync_timer_repeat_count;
@@ -1075,20 +1050,12 @@ struct vfe31_ctrl_type {
 	uint32_t vfeFrameSkipCount;
 	uint32_t vfeFrameSkipPeriod;
 	uint32_t rolloff_update;
-	uint32_t status_bits;
 	struct vfe_stats_control afStatsControl;
 	struct vfe_stats_control awbStatsControl;
 	struct vfe_stats_control aecStatsControl;
 	struct vfe_stats_control ihistStatsControl;
 	struct vfe_stats_control rsStatsControl;
 	struct vfe_stats_control csStatsControl;
-	struct msm_camera_sensor_info *s_info;
-	struct vfe_message vMsgHold_Snap;
-	struct vfe_message vMsgHold_Thumb;
-	int8_t xbar_update_pending;
-	uint32_t xbar_cfg[2];
-	spinlock_t xbar_lock;
-	uint32_t while_stopping_mask;
 };
 
 #define statsAeNum      0
