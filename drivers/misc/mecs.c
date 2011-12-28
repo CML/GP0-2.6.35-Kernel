@@ -347,15 +347,15 @@ static int __init ecompass_init(void)
 	/* 32768 == 1gauss, range -4gauss ~ +4gauss */
 	/* magnetic raw x-axis */
 	input_set_abs_params(ecs_data_device, ABS_HAT0X, 
-		0, 0, 0, 0);
+		-32768*4, 32768*4, 0, 0);
 
 	/* magnetic raw y-axis */
 	input_set_abs_params(ecs_data_device, ABS_HAT0Y, 
-		0, 0, 0, 0);
+		-32768*4, 32768*4, 0, 0);
 
 	/* magnetic raw z-axis */
 	input_set_abs_params(ecs_data_device, ABS_BRAKE, 
-		0, 0, 0, 0);
+		-32768*4, 32768*4, 0, 0);
 
 	/* 65536 == 360degree */
 	/* orientation yaw, 0 ~ 360 */

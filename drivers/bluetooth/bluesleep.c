@@ -81,13 +81,13 @@ DECLARE_DELAYED_WORK(sleep_workqueue, bluesleep_sleep_work);
 #define bluesleep_rx_idle()     schedule_delayed_work(&sleep_workqueue, 0)
 #define bluesleep_tx_idle()     schedule_delayed_work(&sleep_workqueue, 0)
 
-/* 5 second timeout */
-#define TX_TIMER_INTERVAL	5
+/* 1 second timeout */
+#define TX_TIMER_INTERVAL	1
 
 /* state variable names and bit positions */
-#define BT_PROTO	0x0001
-#define BT_TXDATA	0x0002
-#define BT_ASLEEP	0x0004
+#define BT_PROTO	0x01
+#define BT_TXDATA	0x02
+#define BT_ASLEEP	0x04
 
 #ifdef CONFIG_BOARD_PW28
 #define BT_UART

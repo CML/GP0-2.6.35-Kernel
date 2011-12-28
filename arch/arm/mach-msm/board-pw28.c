@@ -484,7 +484,7 @@ static struct platform_device msm_device_snd = {
 	.name = "msm_snd",
 	.id = -1,
 	.dev    = {
-		.platform_data = &msm_device_snd_endpoints
+	.platform_data = &msm_device_snd_endpoints
 	},
 };
 
@@ -995,23 +995,23 @@ static struct platform_device msm_fb_device = {
 			printk(KERN_ERR "BlueZ required power up * QCOM\r\n");
 			gpio_direction_output(94,0);
 			gpio_direction_output(20,0);
-			msleep(5);
-			printk(KERN_ERR "BlueZ required power up * QCOM delay 5ms\r\n");
-			printk(KERN_ERR "BlueZ required power up * QCOM delay 150ms\r\n");
+			msleep(1);
+			printk(KERN_ERR "BlueZ required power up * QCOM delay 1ms\r\n");
+			printk(KERN_ERR "BlueZ required power up * QCOM delay 100ms\r\n");
 			gpio_direction_output(94,1);
-			msleep(150);
+			msleep(100);
 			gpio_direction_output(20,1);
-			msleep(150);
+			msleep(100);
 
 		} else {
-			msleep(150);
+			msleep(100);
 			rc = vreg_disable(vreg_bt);
 			if (rc) {
 				printk(KERN_ERR "%s: vreg disable failed (%d)\n",
 					   __func__, rc);
 				return -EIO;
 			}
-			msleep(150);
+			msleep(100);
 			for (pin = 0; pin < ARRAY_SIZE(bt_config_power_off); pin++) {
 				rc = gpio_tlmm_config(bt_config_power_off[pin],
 							  GPIO_CFG_ENABLE);
@@ -1626,16 +1626,20 @@ static struct msm_gpio sdc2_sleep_cfg_data[] = {
 };
 
 static struct sdcc_gpio sdcc_cfg_data[] = {
-	{
-		.cfg_data = sdc1_cfg_data,
-		.size = ARRAY_SIZE(sdc1_cfg_data),
-		.sleep_cfg_data = sdc1_sleep_cfg_data,
-	},
-	{
-		.cfg_data = sdc2_cfg_data,
-		.size = ARRAY_SIZE(sdc2_cfg_data),
-		.sleep_cfg_data = sdc2_sleep_cfg_data,
-	},
+#ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
+        {
+                .cfg_data = sdc1_cfg_data,
+                .size = ARRAY_SIZE(sdc1_cfg_data),
+                .sleep_cfg_data = sdc1_sleep_cfg_data,
+        },
+#endif
+#ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
+        {
+                .cfg_data = sdc2_cfg_data,
+                .size = ARRAY_SIZE(sdc2_cfg_data),
+                .sleep_cfg_data = sdc2_sleep_cfg_data,
+        },
+#endif
 };
 
 static void msm_sdcc_setup_gpio(int dev_id, unsigned int enable)
@@ -1776,14 +1780,10 @@ static void __init msm7x2x_init_mmc(void)
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
 	msm_add_sdcc(1, &msm7x2x_sdc1_data);
 #endif
-
-	if (machine_is_msm7x25_surf() || machine_is_msm7x27_surf() ||
-		machine_is_msm7x27_ffa()) {
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
 		sdio_wakeup_gpiocfg_slot2();
 		msm_add_sdcc(2, &msm7x2x_sdc2_data);
 #endif
-	}
 }
 #else
 #define msm7x2x_init_mmc() do {} while (0)
@@ -1926,7 +1926,6 @@ static void __init msm7x2x_init(void)
 {
 	struct kobject *properties_kobj;
 
-	wlan_power(1);
 	msm_clock_init(msm_clocks_7x27, msm_num_clocks_7x27);
 	generate_serial_from_uuid();
 
@@ -2057,14 +2056,6 @@ static int __init pmem_adsp_size_setup(char *p)
 }
 early_param("pmem_adsp_size", pmem_adsp_size_setup);
 
-static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
-static int __init pmem_audio_size_setup(char *p)
-{
-	pmem_audio_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_audio_size", pmem_audio_size_setup);
-
 static unsigned fb_size = MSM_FB_SIZE;
 static int __init fb_size_setup(char *p)
 {
@@ -2096,19 +2087,11 @@ static void __init msm_msm7x2x_allocate_memory_regions(void)
 			"pmem arena\n", size, addr, __pa(addr));
 	}
 
-	size = pmem_audio_size;
-	if (size > 0xE1000) { // 900 KB
-		addr = alloc_bootmem(size);
-		android_pmem_audio_pdata.start = __pa(addr);
-		android_pmem_audio_pdata.size = size;
-		pr_info("allocating %lu bytes at %p (%lx physical) for audio "
-			"pmem arena\n", size, addr, __pa(addr));
-	} else if (size) {
-		android_pmem_audio_pdata.start = MSM_PMEM_AUDIO_START_ADDR;
-		android_pmem_audio_pdata.size = size;
-		pr_info("allocating %lu bytes (at %lx physical) for audio "
-			"pmem arena\n", size , MSM_PMEM_AUDIO_START_ADDR);
-	}
+	size = MSM_PMEM_AUDIO_SIZE ;
+	android_pmem_audio_pdata.start = MSM_PMEM_AUDIO_START_ADDR ;
+	android_pmem_audio_pdata.size = size;
+	pr_info("allocating %lu bytes (at %lx physical) for audio "
+		"pmem arena\n", size , MSM_PMEM_AUDIO_START_ADDR);
 
 	size = fb_size ? : MSM_FB_SIZE;
 	addr = alloc_bootmem(size);

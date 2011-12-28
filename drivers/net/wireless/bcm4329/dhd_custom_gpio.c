@@ -188,7 +188,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			gpio_direction_output(97,1);
 #endif
 			/* Lets customer power to get stable */
-			OSL_DELAY(100);
+			OSL_DELAY(200);
 		break;
 	}
 }

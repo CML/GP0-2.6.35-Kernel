@@ -329,6 +329,7 @@ static enum power_supply_property msm_batt_power_props[] = {
 #ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
 	#define BATTERY_HIGH_CHG 	4221 //Máximo (mínimo) que cumplen TODOS los ZERO.
 	#define BATTERY_INIT		99
+	#define BATTERY_CHG_PERCENT 6
 	static u32 calculate_capacity(u32 current_voltage);
 #endif
 
@@ -456,7 +457,7 @@ static int msm_batt_get_batt_chg_status(void)
 	return 0;
 }
 
-static void msm_batt_update_psy_status(void)
+static void real_msm_batt_update_psy_status(void)
 {
 	static u32 unnecessary_event_count;
 	u32	charger_status;
@@ -477,7 +478,6 @@ static void msm_batt_update_psy_status(void)
 	battery_voltage = rep_batt_chg.v1.battery_voltage;
 	battery_temp = rep_batt_chg.v1.battery_temp;
 
-
 	/* Make correction for battery status */
 	if (battery_status == BATTERY_STATUS_INVALID_v1) {
 		if (msm_batt_info.chg_api_version < CHG_RPC_VER_2_2)
@@ -486,7 +486,6 @@ static void msm_batt_update_psy_status(void)
 
 	#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
 		msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
-		msm_batt_info.calculate_capacity(battery_voltage);
 	#endif    
 
 	if (charger_status == msm_batt_info.charger_status &&
@@ -571,7 +570,8 @@ static void msm_batt_update_psy_status(void)
 			supp = &msm_psy_batt;
 		}
 		#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
-			msm_batt_info.batt_capacity = msm_batt_info.calculate_capacity(rep_batt_chg.v1.battery_voltage);
+			rep_batt_chg.v1.battery_voltage = msm_batt_get_vbatt_voltage();
+			msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
 		#endif  
 	} else {
 		/* Correct charger status */
@@ -683,6 +683,17 @@ static void msm_batt_update_psy_status(void)
 		DBG_LIMIT("BATT: Supply = %s\n", supp->name);
 		power_supply_changed(supp);
     }
+}
+
+/*Función que realiza el recálculo de voltaje antes de llamar al
+  verdadero msm_batt_update_psy_status*/
+static void msm_batt_update_psy_status(void)
+{
+	#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
+		//Recálculo de voltaje al resumir para evitar picos de voltaje.
+		rep_batt_chg.v1.battery_voltage = msm_batt_get_vbatt_voltage();
+	#endif
+	real_msm_batt_update_psy_status();
 }
 
 /* Control del modo de carga según a qué esté conectado el USB.
@@ -1305,7 +1316,7 @@ static u32 calculate_capacity(u32 current_voltage)
 
 			//Con el cargador conectado, se ha de restar un 6% para evitar picos de porcentaje.
 			if(is_chg != 0) 
-				cur_percentage = cur_percentage - 6;
+				cur_percentage = cur_percentage - BATTERY_CHG_PERCENT;
 		}
 	}
 
@@ -1595,31 +1606,9 @@ static int __devexit msm_batt_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#if defined CONFIG_PM
-/* Añadido resume para solventar problemas al salir del modo suspensión
-   con el cargador conectado.*/
-static int  msm_batt_resume(struct platform_device *pdev)
-{
-	int rc;
-	msm_batt_update_psy_status();
-	set_data_to_arm9(WAKE_UPDATE_BATT_INFO,(char *)&rc,sizeof(int));
-	return 0;
-}
-
-static int msm_batt_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	msm_batt_update_psy_status();
-	return 0;
-}
-#endif
-
 static struct platform_driver msm_batt_driver = {
 	.probe = msm_batt_probe,
 	.remove = __devexit_p(msm_batt_remove),
-#if defined CONFIG_PM
-	.suspend = msm_batt_suspend,
-	.resume = msm_batt_resume,
-#endif
 	.driver = {
 		   .name = "msm-battery",
 		   .owner = THIS_MODULE,

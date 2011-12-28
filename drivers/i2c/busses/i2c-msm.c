@@ -689,10 +689,13 @@ msm_i2c_probe(struct platform_device *pdev)
 	}
 	dev->pm_qos_req = pm_qos_add_request(PM_QOS_CPU_DMA_LATENCY,
 					     PM_QOS_DEFAULT_VALUE);
+
+#ifndef CONFIG_BOARD_PW28
 	if (!dev->pm_qos_req) {
 		dev_err(&pdev->dev, "pm_qos_add_request failed\n");
 		goto err_pm_qos_add_request_failed;
 	}
+#endif
 
 	disable_irq(dev->irq);
 	dev->suspended = 0;
@@ -706,8 +709,10 @@ msm_i2c_probe(struct platform_device *pdev)
 
 	return 0;
 
+#ifndef CONFIG_BOARD_PW28
 err_pm_qos_add_request_failed:
 	free_irq(dev->irq, dev); 
+#endif
 err_request_irq_failed:
 	i2c_del_adapter(&dev->adap_pri);
 	i2c_del_adapter(&dev->adap_aux);
@@ -777,6 +782,8 @@ static int msm_i2c_suspend(struct platform_device *pdev, pm_message_t state)
 static int msm_i2c_resume(struct platform_device *pdev)
 {
 	struct msm_i2c_dev *dev = platform_get_drvdata(pdev);
+	gpio_tlmm_config(GPIO_CFG(60, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+	gpio_tlmm_config(GPIO_CFG(61, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
 	dev->suspended = 0;
 	return 0;
 }

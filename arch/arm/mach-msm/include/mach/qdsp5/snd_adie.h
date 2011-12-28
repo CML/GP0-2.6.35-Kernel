@@ -101,5 +101,5 @@ struct adie_svc_config_adie_block_cb_args {
 int adie_svc_get(void);
 int adie_svc_put(int id);
 int adie_svc_config_adie_block(int id,
-	enum adie_block_enum_type adie_block_type, bool enable);
+enum adie_block_enum_type adie_block_type, int value);
 #endif
