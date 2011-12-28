@@ -156,7 +156,7 @@ static void clean_and_signal(struct smd_pkt_dev *smd_pkt_devp)
 
 	smd_pkt_devp->is_open = 0;
 
-	wake_up(&smd_pkt_devp->ch_read_wait_queue);
+	wake_up_interruptible(&smd_pkt_devp->ch_read_wait_queue);
 	wake_up_interruptible(&smd_pkt_devp->ch_write_wait_queue);
 	wake_up_interruptible(&smd_pkt_devp->ch_opened_wait_queue);
 }
@@ -444,7 +444,7 @@ static void check_and_wakeup_reader(struct smd_pkt_dev *smd_pkt_devp)
 	}
 
 	/* here we have a packet of size sz ready */
-	wake_up(&smd_pkt_devp->ch_read_wait_queue);
+	wake_up_interruptible(&smd_pkt_devp->ch_read_wait_queue);
 	D(KERN_ERR "%s: after wake_up\n", __func__);
 }
 

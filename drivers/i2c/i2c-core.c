@@ -345,6 +345,7 @@ struct i2c_client *i2c_verify_client(struct device *dev)
 }
 EXPORT_SYMBOL(i2c_verify_client);
 
+
 /* This is a permissive address validity check, I2C address map constraints
  * are purposedly not enforced, except for the general call address. */
 static int i2c_check_client_addr_validity(const struct i2c_client *client)
@@ -442,9 +443,7 @@ i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
 	if (status) {
 		dev_err(&adap->dev, "Invalid %d-bit I2C address 0x%02hx\n",
 			client->flags & I2C_CLIENT_TEN ? 10 : 7, client->addr);
-#ifdef CONFIG_BOARD_PW28
-		// I2C_BOARD_INFO(CM3623_NAME, 0)
-#else
+#ifndef CONFIG_BOARD_PW28
 		goto out_err_silent;
 #endif
 	}
@@ -904,6 +903,14 @@ static int i2c_do_del_adapter(struct i2c_driver *driver,
 static int __unregister_client(struct device *dev, void *dummy)
 {
 	struct i2c_client *client = i2c_verify_client(dev);
+	if (client && strcmp(client->name, "dummy"))
+		i2c_unregister_device(client);
+	return 0;
+}
+
+static int __unregister_dummy(struct device *dev, void *dummy)
+{
+	struct i2c_client *client = i2c_verify_client(dev);
 	if (client)
 		i2c_unregister_device(client);
 	return 0;
@@ -958,8 +965,12 @@ int i2c_del_adapter(struct i2c_adapter *adap)
 	i2c_unlock_adapter(adap);
 
 	/* Detach any active clients. This can't fail, thus we do not
-	   checking the returned value. */
+	 * check the returned value. This is a two-pass process, because
+	 * we can't remove the dummy devices during the first pass: they
+	 * could have been instantiated by real devices wishing to clean
+	 * them up properly, so we give them a chance to do that first. */
 	res = device_for_each_child(&adap->dev, NULL, __unregister_client);
+	res = device_for_each_child(&adap->dev, NULL, __unregister_dummy);
 
 #ifdef CONFIG_I2C_COMPAT
 	class_compat_remove_link(i2c_adapter_compat_class, &adap->dev,

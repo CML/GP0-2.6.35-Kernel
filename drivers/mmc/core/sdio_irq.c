@@ -186,17 +186,7 @@ static int sdio_card_irq_put(struct mmc_card *card)
 
 	if (!--host->sdio_irqs) {
 		atomic_set(&host->sdio_irq_thread_abort, 1);
-#if 0
 		kthread_stop(host->sdio_irq_thread);
-#else
-		if (host->claimed) {
-			mmc_release_host(host);
-		kthread_stop(host->sdio_irq_thread);
-			mmc_claim_host(host);
-		} else {
-			kthread_stop(host->sdio_irq_thread);
-		}
-#endif
 	}
 
 	return 0;
@@ -244,13 +234,6 @@ int sdio_claim_irq(struct sdio_func *func, sdio_irq_handler_t *handler)
 	if (ret)
 		return ret;
 
-#if 0
-	func->irq_handler = handler;
-	ret = sdio_card_irq_get(func->card);
-	if (ret)
-		func->irq_handler = NULL;
-
-#endif
 	return ret;
 }
 EXPORT_SYMBOL_GPL(sdio_claim_irq);

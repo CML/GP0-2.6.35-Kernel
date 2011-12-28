@@ -405,8 +405,6 @@ struct platform_device msm_device_dmov = {
 
 #define MSM_SDC1_BASE         0xA0400000
 #define MSM_SDC2_BASE         0xA0500000
-#define MSM_SDC3_BASE         0xA0600000
-#define MSM_SDC4_BASE         0xA0700000
 static struct resource resources_sdc1[] = {
 	{
 		.start	= MSM_SDC1_BASE,
@@ -419,17 +417,10 @@ static struct resource resources_sdc1[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
-		.name	= "sdcc_dma_chnl",
-		.start	= DMOV_SDC1_CHAN,
-		.end	= DMOV_SDC1_CHAN,
+		.start	= 8,
+		.end	= 8,
 		.flags	= IORESOURCE_DMA,
 	},
-	{
-		.name	= "sdcc_dma_crci",
-		.start	= DMOV_SDC1_CRCI,
-		.end	= DMOV_SDC1_CRCI,
-		.flags	= IORESOURCE_DMA,
-	}
 };
 
 static struct resource resources_sdc2[] = {
@@ -444,65 +435,8 @@ static struct resource resources_sdc2[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
-		.name	= "sdcc_dma_chnl",
-		.start	= DMOV_SDC2_CHAN,
-		.end	= DMOV_SDC2_CHAN,
-		.flags	= IORESOURCE_DMA,
-	},
-	{
-		.name	= "sdcc_dma_crci",
-		.start	= DMOV_SDC2_CRCI,
-		.end	= DMOV_SDC2_CRCI,
-		.flags	= IORESOURCE_DMA,
-	}
-};
-
-static struct resource resources_sdc3[] = {
-	{
-		.start	= MSM_SDC3_BASE,
-		.end	= MSM_SDC3_BASE + SZ_4K - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= INT_SDC3_0,
-		.end	= INT_SDC3_1,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name	= "sdcc_dma_chnl",
-		.start	= DMOV_SDC3_CHAN,
-		.end	= DMOV_SDC3_CHAN,
-		.flags	= IORESOURCE_DMA,
-	},
-	{
-		.name	= "sdcc_dma_crci",
-		.start	= DMOV_SDC3_CRCI,
-		.end	= DMOV_SDC3_CRCI,
-		.flags	= IORESOURCE_DMA,
-	},
-};
-
-static struct resource resources_sdc4[] = {
-	{
-		.start	= MSM_SDC4_BASE,
-		.end	= MSM_SDC4_BASE + SZ_4K - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= INT_SDC4_0,
-		.end	= INT_SDC4_1,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name	= "sdcc_dma_chnl",
-		.start	= DMOV_SDC4_CHAN,
-		.end	= DMOV_SDC4_CHAN,
-		.flags	= IORESOURCE_DMA,
-	},
-	{
-		.name	= "sdcc_dma_crci",
-		.start	= DMOV_SDC4_CRCI,
-		.end	= DMOV_SDC4_CRCI,
+		.start	= 8,
+		.end	= 8,
 		.flags	= IORESOURCE_DMA,
 	},
 };
@@ -527,31 +461,9 @@ struct platform_device msm_device_sdc2 = {
 	},
 };
 
-struct platform_device msm_device_sdc3 = {
-	.name		= "msm_sdcc",
-	.id		= 3,
-	.num_resources	= ARRAY_SIZE(resources_sdc3),
-	.resource	= resources_sdc3,
-	.dev		= {
-		.coherent_dma_mask	= 0xffffffff,
-	},
-};
-
-struct platform_device msm_device_sdc4 = {
-	.name		= "msm_sdcc",
-	.id		= 4,
-	.num_resources	= ARRAY_SIZE(resources_sdc4),
-	.resource	= resources_sdc4,
-	.dev		= {
-		.coherent_dma_mask	= 0xffffffff,
-	},
-};
-
 static struct platform_device *msm_sdcc_devices[] __initdata = {
 	&msm_device_sdc1,
 	&msm_device_sdc2,
-	&msm_device_sdc3,
-	&msm_device_sdc4,
 };
 
 int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat)
@@ -806,8 +718,8 @@ struct clk_lookup msm_clocks_7x27[] = {
 	CLK_PCOM("mdc_clk",	MDC_CLK,	NULL, 0),
 	CLK_PCOM("mddi_clk",	PMDH_CLK,	NULL, OFF | CLK_MINMAX),
 	CLK_PCOM("mdp_clk",	MDP_CLK,	NULL, OFF),
-	CLK_PCOM("mdp_lcdc_pclk_clk", MDP_LCDC_PCLK_CLK, NULL, 0),
-	CLK_PCOM("mdp_lcdc_pad_pclk_clk", MDP_LCDC_PAD_PCLK_CLK, NULL, 0),
+	CLK_PCOM("mdp_lcdc_pclk_clk", MDP_LCDC_PCLK_CLK, NULL, OFF),
+	CLK_PCOM("mdp_lcdc_pad_pclk_clk", MDP_LCDC_PAD_PCLK_CLK, NULL, OFF),
 	CLK_PCOM("mdp_vsync_clk",	MDP_VSYNC_CLK,  NULL, OFF),
 	CLK_PCOM("pbus_clk",	PBUS_CLK,	NULL, CLK_MIN),
 	CLK_PCOM("pcm_clk",	PCM_CLK,	NULL, 0),
@@ -816,10 +728,6 @@ struct clk_lookup msm_clocks_7x27[] = {
 	CLK_PCOM("sdc_pclk",	SDC1_P_CLK,	"msm_sdcc.1", OFF),
 	CLK_PCOM("sdc_clk",	SDC2_CLK,	"msm_sdcc.2", OFF),
 	CLK_PCOM("sdc_pclk",	SDC2_P_CLK,	"msm_sdcc.2", OFF),
-	CLK_PCOM("sdc_clk",	SDC3_CLK,	"msm_sdcc.3", OFF),
-	CLK_PCOM("sdc_pclk",	SDC3_P_CLK,	"msm_sdcc.3", OFF),
-	CLK_PCOM("sdc_clk",	SDC4_CLK,	"msm_sdcc.4", OFF),
-	CLK_PCOM("sdc_pclk",	SDC4_P_CLK,	"msm_sdcc.4", OFF),
 	CLK_PCOM("tsif_clk",	TSIF_CLK,	NULL, 0),
 	CLK_PCOM("tsif_ref_clk", TSIF_REF_CLK,	NULL, 0),
 	CLK_PCOM("tsif_pclk",	TSIF_P_CLK,	NULL, 0),

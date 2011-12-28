@@ -30,18 +30,14 @@ static TpsPumpRes_t TpsRes = {
 
 static DEFINE_SPINLOCK(atom_lock);
 
-extern struct gpio_chip *gpio2chip(unsigned int gpio);
-
 static void Tpsc(TpsPumpRes_t *pstRes, u32 n, bool Dir) {
-	struct gpio_chip * chip;
     unsigned long irq_flags;
-    u32 i, offset, delay, loops;
-    chip = gpio2chip(pstRes->Id);
-    offset = pstRes->Id - chip->base;
+    u32 i, delay, loops;
+
     delay = Dir ? 20 : 200;
     
     spin_lock_irqsave(&atom_lock, irq_flags);
-    loops = loops_per_jiffy/(1000000/HZ);
+    loops = loops_per_jiffy / (1000000 / HZ);
     loops *= delay;
     for (i = 0; i < n; i++) {
         gpio_direction_output(pstRes->Id, 1);

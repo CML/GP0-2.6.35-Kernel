@@ -1,0 +1,36 @@
+--- include/linux/sched.h	2011-05-17 10:38:06.027271974 +1000
++++ include/linux/sched.h	2011-05-17 14:00:43.840699152 +1000
+@@ -1179,17 +1184,33 @@
+ 
+ 	int lock_depth;		/* BKL lock depth */
+ 
++#ifndef CONFIG_SCHED_BFS
+ #ifdef CONFIG_SMP
+ #ifdef __ARCH_WANT_UNLOCKED_CTXSW
+ 	int oncpu;
+ #endif
+ #endif
++#else /* CONFIG_SCHED_BFS */
++	int oncpu;
++#endif
+ 
+ 	int prio, static_prio, normal_prio;
+ 	unsigned int rt_priority;
++#ifdef CONFIG_SCHED_BFS
++	int time_slice;
++	u64 deadline;
++	struct list_head run_list;
++	u64 last_ran;
++	u64 sched_time; /* sched_clock time spent running */
++#ifdef CONFIG_SMP
++	int sticky; /* Soft affined flag */
++#endif
++	unsigned long rt_timeout;
++#else /* CONFIG_SCHED_BFS */
+ 	const struct sched_class *sched_class;
+ 	struct sched_entity se;
+ 	struct sched_rt_entity rt;
++#endif
+ 
+ #ifdef CONFIG_PREEMPT_NOTIFIERS
+ 	/* list of struct preempt_notifier: */

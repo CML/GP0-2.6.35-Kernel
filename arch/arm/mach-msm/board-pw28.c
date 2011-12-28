@@ -1569,7 +1569,7 @@ static void __init msm7x2x_init_irq(void)
 
 static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 	.acpu_switch_time_us = 50,
-	.max_speed_delta_khz = 400000,
+	.max_speed_delta_khz = 256000,
 	.vdd_switch_time_us = 62,
 	.max_axi_khz = 160000,
 };
@@ -1738,7 +1738,7 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 	#endif
 		.msmsdcc_fmin   = 144000,
 		.msmsdcc_fmid   = 24576000,
-		.msmsdcc_fmax   = 24576000,
+		.msmsdcc_fmax   = 49152000,
 		.nonremovable   = 0,
 	#ifdef CONFIG_MMC_MSM_SDC2_DUMMY52_REQUIRED
 		.dummy52_required = 1,
@@ -1963,7 +1963,7 @@ static void __init msm7x2x_init(void)
 	/* The appropriate maximum replacement for 160000 is: */
 	/* msm7x2x_clock_data.max_axi_khz */
 	kgsl_3d0_pdata.pwr_data.pwrlevel[0].gpu_freq = 0;
-	kgsl_3d0_pdata.pwr_data.pwrlevel[0].bus_freq = 160000;
+	kgsl_3d0_pdata.pwr_data.pwrlevel[0].bus_freq = 160000000;
 	kgsl_3d0_pdata.pwr_data.init_level = 0;
 	kgsl_3d0_pdata.pwr_data.num_levels = 1;
 	/* 7x27 doesn't allow graphics clocks to be run asynchronously to */

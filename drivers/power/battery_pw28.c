@@ -570,6 +570,9 @@ static void msm_batt_update_psy_status(void)
 				POWER_SUPPLY_STATUS_NOT_CHARGING;
 			supp = &msm_psy_batt;
 		}
+		#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
+			msm_batt_info.batt_capacity = msm_batt_info.calculate_capacity(rep_batt_chg.v1.battery_voltage);
+		#endif  
 	} else {
 		/* Correct charger status */
 		if (charger_type != CHARGER_TYPE_INVALID &&

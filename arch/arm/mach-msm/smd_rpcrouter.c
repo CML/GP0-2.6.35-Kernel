@@ -692,11 +692,16 @@ static int rpcrouter_create_remote_endpoint(uint32_t pid, uint32_t cid)
 static struct msm_rpc_endpoint *rpcrouter_lookup_local_endpoint(uint32_t cid)
 {
 	struct msm_rpc_endpoint *ept;
+	unsigned long flags;
 
+	spin_lock_irqsave(&local_endpoints_lock, flags);
 	list_for_each_entry(ept, &local_endpoints, list) {
-		if (ept->cid == cid)
+		if (ept->cid == cid) {
+			spin_unlock_irqrestore(&local_endpoints_lock, flags);
 			return ept;
+		}
 	}
+	spin_unlock_irqrestore(&local_endpoints_lock, flags);
 	return NULL;
 }
 

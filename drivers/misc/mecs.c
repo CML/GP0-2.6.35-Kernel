@@ -28,6 +28,7 @@
 #include <linux/input.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
+#include <linux/wakelock.h>
 #include <asm/uaccess.h>
 
 #include "mecs.h"
@@ -54,8 +55,9 @@ static atomic_t	o_flag;
 static atomic_t	p_flag;
 static atomic_t	l_flag;
 
-static short ecompass_delay = 200;
+static struct wake_lock proxi_lock;
 
+static short ecompass_delay = 0;
 
 static struct input_dev *ecs_data_device;
 
@@ -121,6 +123,7 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 	case ECOMPASS_IOC_SET_DELAY:
 		if (copy_from_user(&delay, pa, sizeof(delay)))
 			return -EFAULT;
+		ecompass_delay = delay;
 		break;
 	case ECOMPASS_IOC_GET_DELAY:
 		delay = ecompass_delay;
@@ -170,6 +173,10 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (flag < 0 || flag > 1)
 			return -EINVAL;
 		atomic_set(&p_flag, flag);
+		if (flag)
+			wake_lock(&proxi_lock);
+		else
+			wake_unlock(&proxi_lock);
 		break;
 	case ECOMPASS_IOC_GET_PFLAG:
 		flag = atomic_read(&p_flag);
@@ -192,7 +199,6 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 	case ECOMPASS_IOC_SET_APARMS:
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
-		break;
 		/* acceleration x-axis */
 		input_set_abs_params(ecs_data_device, ABS_X, 
 			parms[0], parms[1], parms[2], parms[3]);
@@ -209,7 +215,6 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
 		/* magnetic raw x-axis */
-		break;
 		input_set_abs_params(ecs_data_device, ABS_HAT0X, 
 			parms[0], parms[1], parms[2], parms[3]);
 		/* magnetic raw y-axis */
@@ -225,7 +230,6 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
 		/* orientation yaw */
-		break;
 		input_set_abs_params(ecs_data_device, ABS_RX, 
 			parms[0], parms[1], parms[2], parms[3]);
 		break;
@@ -235,7 +239,6 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
 		/* orientation pitch */
-		break;
 		input_set_abs_params(ecs_data_device, ABS_RY, 
 			parms[0], parms[1], parms[2], parms[3]);
 		break;
@@ -245,7 +248,6 @@ static int ecs_ctrl_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(parms, pa, sizeof(parms)))
 			return -EFAULT;
 		/* orientation roll */
-		break;
 		input_set_abs_params(ecs_data_device, ABS_RZ, 
 			parms[0], parms[1], parms[2], parms[3]);
 		break;
@@ -396,6 +398,8 @@ static int __init ecompass_init(void)
 	}
 
 
+	wake_lock_init(&proxi_lock, WAKE_LOCK_SUSPEND, "proximity_lock");
+
 	pr_info("ecompass driver: init--\n");
 
 	return 0;
@@ -411,6 +415,7 @@ out:
 static void __exit ecompass_exit(void)
 {
 	pr_info("ecompass driver: exit\n");
+	wake_lock_destroy(&proxi_lock);
 	device_remove_file(ecs_ctrl_device.this_device, &dev_attr_ecs_ctrl);
 	misc_deregister(&ecs_ctrl_device);
 	input_free_device(ecs_data_device);

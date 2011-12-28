@@ -22,6 +22,20 @@ config BCM4329_FW_PATH
 config BCM4329_NVRAM_PATH
 	depends on BCM4329
 	string "NVRAM path"
-	default "/proc/calibration"
+	default "/system/etc/wifi/nvram.txt"
 	---help---
 	  Path to the calibration file.
+
+config BCM4329_ENABLE_CSCAN
+        depends on BCM4329
+        bool "Enable CSCAN"
+        default n
+        ---help---
+          Enable the use of CSCAN methods.
+
+config BCM4329_ENABLE_PNO_SUPPORT
+        depends on BCM4329_ENABLE_CSCAN
+        bool "Enable PNO_SUPPORT"
+        default n
+        ---help---
+          Enable the use of PNO_SUPPORT methods.
