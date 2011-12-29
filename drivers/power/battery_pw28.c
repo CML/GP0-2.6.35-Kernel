@@ -62,8 +62,8 @@
 #define BATTERY_CB_ID_ALL_ACTIV		1
 #define BATTERY_CB_ID_LOW_VOL		2
 
-/* Entre 3170 y 3190 se apaga, el mínimo seguro es 3291
-   para que el framework pueda apagar el móvil por su cuenta*/
+/* Entre 3170 y 3190 se apaga, el mï¿½nimo seguro es 3291
+   para que el framework pueda apagar el mï¿½vil por su cuenta*/
 #define BATTERY_LOW 		3291
 #define BATTERY_HIGH  		4160
 #define USB 2
@@ -327,7 +327,7 @@ static enum power_supply_property msm_batt_power_props[] = {
 };
 
 #ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
-	#define BATTERY_HIGH_CHG 	4221 //Máximo (mínimo) que cumplen TODOS los ZERO.
+	#define BATTERY_HIGH_CHG 	4221 //Mï¿½ximo (mï¿½nimo) que cumplen TODOS los ZERO.
 	#define BATTERY_INIT		99
 	#define BATTERY_CHG_PERCENT 6
 	static u32 calculate_capacity(u32 current_voltage);
@@ -685,18 +685,18 @@ static void real_msm_batt_update_psy_status(void)
     }
 }
 
-/*Función que realiza el recálculo de voltaje antes de llamar al
+/*Funciï¿½n que realiza el recï¿½lculo de voltaje antes de llamar al
   verdadero msm_batt_update_psy_status*/
 static void msm_batt_update_psy_status(void)
 {
 	#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
-		//Recálculo de voltaje al resumir para evitar picos de voltaje.
+		//Recï¿½lculo de voltaje al resumir para evitar picos de voltaje.
 		rep_batt_chg.v1.battery_voltage = msm_batt_get_vbatt_voltage();
 	#endif
 	real_msm_batt_update_psy_status();
 }
 
-/* Control del modo de carga según a qué esté conectado el USB.
+/* Control del modo de carga segï¿½n a quï¿½ estï¿½ conectado el USB.
    NECESARIO PARA CARGAR CORRECTAMENTE EN TODOS LOS CASOS.
  */
 void update_usb_to_gui(int i)
@@ -1208,7 +1208,7 @@ static int msm_batt_cleanup(void)
 	return rc;
 }
 
-//Cálculo de batería estandar
+//Cï¿½lculo de baterï¿½a estandar
 static u32 msm_batt_capacity(u32 current_voltage)
 {
 	u32 low_voltage = msm_batt_info.voltage_min_design;
@@ -1225,7 +1225,7 @@ static u32 msm_batt_capacity(u32 current_voltage)
 #ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
 /*
 	Control de estado de carga
-	Retorno: true en caso de cargar, false si no está conectado.
+	Retorno: true en caso de cargar, false si no estï¿½ conectado.
 */
 static int get_chg_status(void)
 {
@@ -1241,8 +1241,8 @@ static int get_chg_status(void)
 	return result;
 }
 
-/* Cálculo de batería SIMCUST.
-   A su vez, controla los estados de carga de la batería para indicarselos de forma
+/* Cï¿½lculo de baterï¿½a SIMCUST.
+   A su vez, controla los estados de carga de la baterï¿½a para indicarselos de forma
    correcta al framework.
  */
 static u32 calculate_capacity(u32 current_voltage)
@@ -1281,18 +1281,18 @@ static u32 calculate_capacity(u32 current_voltage)
 		}
 		else
 		{
-			// Llegado a éste punto sólo puede ser una descarga 
+			// Llegado a ï¿½ste punto sï¿½lo puede ser una descarga 
 			msm_batt_info.batt_status = POWER_SUPPLY_STATUS_DISCHARGING;
 			rep_batt_chg.v1.battery_level = BATTERY_LEVEL_GOOD;
 		}
 	}
     else //Control fuera de la carga completa.
     {
-		//Si procede se cambia el estado de carga de la batería
+		//Si procede se cambia el estado de carga de la baterï¿½a
 		if(msm_batt_info.batt_status == POWER_SUPPLY_STATUS_FULL)
 		{
-			/* Llegado a éste punto sólo puede ser una descarga, en caso de no serlo,			
-			   indicaría el modo de carga por USB o por AC
+			/* Llegado a ï¿½ste punto sï¿½lo puede ser una descarga, en caso de no serlo,			
+			   indicarï¿½a el modo de carga por USB o por AC
   			*/ 
 			msm_batt_info.batt_status = POWER_SUPPLY_STATUS_DISCHARGING;
 			rep_batt_chg.v1.battery_level = BATTERY_LEVEL_GOOD;
@@ -1310,7 +1310,7 @@ static u32 calculate_capacity(u32 current_voltage)
 		{
 			cur_percentage = 0;
 		} 
-		else //Se realiza el cálculo para el resto de porcentajes
+		else //Se realiza el cï¿½lculo para el resto de porcentajes
 		{
 			cur_percentage = msm_batt_capacity(current_voltage);
 
@@ -1331,7 +1331,7 @@ static u32 calculate_capacity(u32 current_voltage)
 		delay  = 0;
     }
 
-	//Simetría de porcentaje, ni carga ni descarga.
+	//Simetrï¿½a de porcentaje, ni carga ni descarga.
     if((abs(cur_percentage - pre_percentage) > 6) && (delay < 0))
     {
 		delay++;
