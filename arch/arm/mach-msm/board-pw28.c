@@ -82,9 +82,9 @@
 	#define MSM_PMEM_AUDIO_SIZE	0x5B000
 
 	#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
-		#define MSM_FB_SIZE		0x233000
+		#define MSM_FB_SIZE	0x233000
 	#else
-		#define MSM_FB_SIZE		0x177000
+		#define MSM_FB_SIZE	0x177000
 	#endif
 
 	#define PMEM_KERNEL_EBI1_SIZE	0x1C000
@@ -113,7 +113,7 @@ static struct platform_device mass_storage_device = {
 	.name           = "usb_mass_storage",
 	.id             = -1,
 	.dev            = {
-		.platform_data          = &usb_mass_storage_pdata,
+	.platform_data  = &usb_mass_storage_pdata,
 	},
 };
 #endif
@@ -208,7 +208,7 @@ static struct android_usb_product usb_products[] = {
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
 	.nluns		= 1,
 	.vendor		= "Qualcomm Incorporated",
-	.product    = "Mass storage",
+	.product  	= "Mass storage",
 	.release	= 0x0100,
 	.can_stall	= 1,
 };
@@ -217,7 +217,7 @@ static struct platform_device usb_mass_storage_device = {
 	.name	= "usb_mass_storage",
 	.id	= -1,
 	.dev	= {
-		.platform_data = &mass_storage_pdata,
+	.platform_data = &mass_storage_pdata,
 	},
 };
 
@@ -231,7 +231,7 @@ static struct platform_device rndis_device = {
 	.name	= "rndis",
 	.id	= -1,
 	.dev	= {
-		.platform_data = &rndis_pdata,
+	.platform_data = &rndis_pdata,
 	},
 };
 
@@ -252,7 +252,7 @@ static struct platform_device android_usb_device = {
 	.name	= "android_usb",
 	.id		= -1,
 	.dev		= {
-		.platform_data = &android_usb_pdata,
+	.platform_data = &android_usb_pdata,
 	},
 };
 
@@ -1155,23 +1155,23 @@ static int synaptics_power(int on) {
             
         	gpio_tlmm_config(GPIO_CFG(124, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);            
     		gpio_tlmm_config(GPIO_CFG(30, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
-            gpio_request(30, "touch power");
-            gpio_direction_output(30, 1);
+	        gpio_request(30, "touch power");
+	        gpio_direction_output(30, 1);
             
     		gpio_tlmm_config(GPIO_CFG(122, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
     		gpio_tlmm_config(GPIO_CFG(123, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
-            vreg_enable(vreg);
-            vreg_set_level(vreg, 2150);
+	        vreg_enable(vreg);
+	        vreg_set_level(vreg, 2150);
         }
         else {
         	pr_info("synaptics power off\n");
             
-            vreg_set_level(vreg, 0);
-            vreg_disable(vreg);            
+	        vreg_set_level(vreg, 0);
+	        vreg_disable(vreg);            
     		gpio_tlmm_config(GPIO_CFG(122, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
     		gpio_tlmm_config(GPIO_CFG(123, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
 
-            gpio_direction_output(30, 0);
+	        gpio_direction_output(30, 0);
     		gpio_tlmm_config(GPIO_CFG(30, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
         	gpio_tlmm_config(GPIO_CFG(124,  0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);            
         }
