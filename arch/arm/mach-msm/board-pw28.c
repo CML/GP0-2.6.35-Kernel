@@ -979,7 +979,7 @@ static struct platform_device msm_fb_device = {
 			}
 
 			/* units of mV, steps of 50 mV */
-			rc = vreg_set_level(vreg_bt, 2650);
+			rc = vreg_set_level(vreg_bt, 2600);
 			if (rc) {
 				printk(KERN_ERR "%s: vreg set level failed (%d)\n",
 					   __func__, rc);
@@ -1055,7 +1055,7 @@ int wlan_power(int flag)
 		return PTR_ERR(vreg_bt);
 	}
 	/* units of mV, steps of 50 mV */
-	rc = vreg_set_level(vreg_bt, 2850);
+	rc = vreg_set_level(vreg_bt, 2650);
 	if (rc) {
 		printk(KERN_ERR "%s: vreg set level failed (%d)\n",
 				__func__, rc);
@@ -1067,8 +1067,7 @@ int wlan_power(int flag)
 			printk(KERN_ERR "%s: vreg enable failed (%d)\n",
 					__func__, rc);
 			return -EIO;
-		}
-		gpio_free(66);
+		}		
 	}else {
 		rc = vreg_disable(vreg_bt);
 		if (rc) {
@@ -1077,6 +1076,7 @@ int wlan_power(int flag)
 			return -EIO;
 		}
 	}
+	gpio_free(66);
 	return 0;
 }
 EXPORT_SYMBOL(wlan_power);
@@ -1158,26 +1158,21 @@ static int synaptics_power(int on) {
             gpio_request(30, "touch power");
             gpio_direction_output(30, 1);
             
-    		gpio_tlmm_config(GPIO_CFG(122, 0, GPIO_CFG_OUTPUT,
-                GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
-    		gpio_tlmm_config(GPIO_CFG(123, 0, GPIO_CFG_OUTPUT,
-                GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+    		gpio_tlmm_config(GPIO_CFG(122, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+    		gpio_tlmm_config(GPIO_CFG(123, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
             vreg_enable(vreg);
-            vreg_set_level(vreg, 2250);
+            vreg_set_level(vreg, 2150);
         }
         else {
         	pr_info("synaptics power off\n");
             
             vreg_set_level(vreg, 0);
             vreg_disable(vreg);            
-    		gpio_tlmm_config(GPIO_CFG(122, 0, GPIO_CFG_INPUT,
-                GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
-    		gpio_tlmm_config(GPIO_CFG(123, 0, GPIO_CFG_INPUT,
-                GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+    		gpio_tlmm_config(GPIO_CFG(122, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+    		gpio_tlmm_config(GPIO_CFG(123, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
 
             gpio_direction_output(30, 0);
-    		gpio_tlmm_config(GPIO_CFG(30, 0, GPIO_CFG_INPUT,
-                GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+    		gpio_tlmm_config(GPIO_CFG(30, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
         	gpio_tlmm_config(GPIO_CFG(124,  0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);            
         }
     }
@@ -1596,7 +1591,16 @@ static struct msm_gpio sdc1_cfg_data[] = {
 	{GPIO_CFG(53, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc1_dat_1"},
 	{GPIO_CFG(54, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc1_dat_0"},
 	{GPIO_CFG(55, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc1_cmd"},
-	{GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA), "sdc1_clk"},
+	{GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_12MA), "sdc1_clk"},
+};
+
+static struct msm_gpio sdc1_sleep_cfg_data[] = {
+        {GPIO_CFG(51, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_dat_3"},
+        {GPIO_CFG(52, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_dat_2"},
+        {GPIO_CFG(53, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_dat_1"},
+        {GPIO_CFG(54, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_dat_0"},
+        {GPIO_CFG(55, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_cmd"},
+        {GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_12MA), "sdc1_clk"},
 };
 
 static struct msm_gpio sdc2_cfg_data[] = {
@@ -1622,7 +1626,7 @@ static struct sdcc_gpio sdcc_cfg_data[] = {
         {
                 .cfg_data = sdc1_cfg_data,
                 .size = ARRAY_SIZE(sdc1_cfg_data),
-                .sleep_cfg_data = NULL,
+                .sleep_cfg_data = sdc1_sleep_cfg_data,
         },
 #endif
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
@@ -1696,7 +1700,8 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 			     MPP_CFG(MPP_DLOGIC_LVL_MSMP,
 			     MPP_DLOGIC_OUT_CTRL_HIGH));
 		} else {
-			rc = vreg_set_level(vreg_mmc, 2850);
+			rc = vreg_set_level(vreg_mmc, 2650);
+
 			if (!rc)
 				rc = vreg_enable(vreg_mmc);
 		}
@@ -1729,7 +1734,7 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 		.translate_vdd	= msm_sdcc_setup_power,
 		.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	#ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
-//		.sdiowakeup_irq = MSM_GPIO_TO_INT(66),
+	//	.sdiowakeup_irq = MSM_GPIO_TO_INT(66),
 	#endif
 		.msmsdcc_fmin   = 144000,
 		.msmsdcc_fmid   = 24576000,
