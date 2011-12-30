@@ -503,7 +503,7 @@ static void real_msm_batt_update_psy_status(void)
 	}
 
 	#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
-		//msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
+		msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
 	#endif    
 
 	if (charger_status == msm_batt_info.charger_status &&
@@ -590,7 +590,6 @@ static void real_msm_batt_update_psy_status(void)
 		#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
 			rep_batt_chg.v1.battery_voltage = msm_batt_get_vbatt_voltage();
 			msm_batt_info.batt_capacity = msm_batt_info.calculate_capacity(rep_batt_chg.v1.battery_voltage);
-			//msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
 		#endif  
 	} else {
 		/* Correct charger status */
