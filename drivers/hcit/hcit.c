@@ -25,9 +25,6 @@
 #define VIBRATOR_MOTOR_OFF_VOLT	0
 #define VIBRATOR_MOTOR_ON_VOLT	3000
 
-#define PMIC_FLASH_CURRENT_DOWN         0
-#define PMIC_FLASH_CURRENT_HIGH         200
-
 #define  PMIC_LED_LCD__LEVEL0 	0
 #define  PMIC_LED_LCD__LEVEL1 	1
 #define  PMIC_LED_LCD__LEVEL2 	2
@@ -65,7 +62,6 @@ enum {
 	GPIOLED_RED = 0,
 	GPIOLED_GREEN,
 	GPIOLED_BLUE,
-
 	GPIOLED_MAX
 };
 
@@ -75,8 +71,6 @@ enum {
 	HCITCMD_KEYLED_OFF,
 	HCITCMD_VIB_ON,
 	HCITCMD_VIB_OFF,
-	HCITCMD_CAMERA_FLASHLED_ON,
-	HCITCMD_CAMERA_FLASHLED_OFF,
 	HCITCMD_LCD_BACKLIGHT_ON,
 	HCITCMD_LCD_BACKLIGHT_OFF,
 	HCITCMD_GPIOLED_ON,
@@ -94,10 +88,6 @@ enum {
 //for vibrator control
 #define HCIT_IOCTL_VIB_ON 	 _IOW(HCIT_MAGIC, HCITCMD_VIB_ON, int)
 #define HCIT_IOCTL_VIB_OFF	 _IOW(HCIT_MAGIC, HCITCMD_VIB_OFF, int)
-
-//for camera flash led
-#define HCIT_IOCTL_CAMERA_FLASHLED_ON 	 _IOW(HCIT_MAGIC, HCITCMD_CAMERA_FLASHLED_ON, int)
-#define HCIT_IOCTL_CAMERA_FLASHLED_OFF	 _IOW(HCIT_MAGIC, HCITCMD_CAMERA_FLASHLED_OFF, int)
 
 //for LCD backlight led
 #define HCIT_IOCTL_LCD_BACKLIGHT_ON 	 _IOW(HCIT_MAGIC, HCITCMD_LCD_BACKLIGHT_ON, int)
@@ -181,16 +171,6 @@ static int hcit_ioctl(struct inode *ino, struct file *filp, unsigned int cmd,
 		break;
 	case HCIT_IOCTL_VIB_OFF:
 		pmic_vib_mot_set_volt(VIBRATOR_MOTOR_OFF_VOLT);
-		break;
-	case HCIT_IOCTL_CAMERA_FLASHLED_ON:
-		printk
-		    ("[HCIT] HCIT_IOControl : IOCTL_GPIO_CAMERA_FLASHLED_ON \r\n");
-		pmic_flash_led_set_current(PMIC_FLASH_CURRENT_HIGH);
-		break;
-	case HCIT_IOCTL_CAMERA_FLASHLED_OFF:
-		printk
-		    ("[HCIT] HCIT_IOControl : IOCTL_GPIO_CAMERA_FLASHLED_OFF \r\n");
-		pmic_flash_led_set_current(PMIC_FLASH_CURRENT_DOWN);
 		break;
 	case HCIT_IOCTL_LCD_BACKLIGHT_ON:
 		printk
@@ -284,7 +264,7 @@ static int bluetooth_power(int on)
 		}
 
 		/* units of mV, steps of 50 mV */
-		rc = vreg_set_level(vreg_bt, 2600);
+		rc = vreg_set_level(vreg_bt, 2650);
 		if (rc) {
 			printk(KERN_ERR "%s: vreg set level failed (%d)\n",
 			       __func__, rc);
@@ -390,13 +370,8 @@ static struct miscdevice hcit_miscdev = {
 	.minor = MISC_DYNAMIC_MINOR,
 };
 
-extern void get_sd_boot_mode(unsigned *pMode);
 static int __init hcit_init(void)
 {
-	get_sd_boot_mode(sd_boot_mode);
-	printk(KERN_ERR "[boot] HCIT read boot mode ={<0x%x>, <0x%x>} \n",
-	       sd_boot_mode[0], sd_boot_mode[1]);
-
 	platform_device_register(&device_hcit);
 	platform_driver_register(&hcit_driver);
 	misc_register(&hcit_miscdev);
@@ -409,7 +384,6 @@ static void __exit hcit_exit(void)
 	misc_deregister(&hcit_miscdev);
 	platform_driver_unregister(&hcit_driver);
 	platform_device_unregister(&device_hcit);
-
 }
 
 module_init(hcit_init);

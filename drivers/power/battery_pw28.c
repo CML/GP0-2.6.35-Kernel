@@ -41,7 +41,7 @@
 
 #define DEBUG  0
 
-#define BATTERY_RPC_PROG  0x30000089
+#define BATTERY_RPC_PROG	0x30000089
 #define BATTERY_RPC_VER_1_1	0x00010001
 #define BATTERY_RPC_VER_2_1	0x00020001
 
@@ -330,7 +330,24 @@ static enum power_supply_property msm_batt_power_props[] = {
 #ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
 	#define BATTERY_HIGH_CHG 	4221 //Máximo (mínimo) que cumplen TODOS los ZERO.
 	#define BATTERY_INIT		99
-	#define BATTERY_CHG_PERCENT 6
+	#define BATTERY_CHG_PERCENT 10
+
+	#define BATTERY_PERCENT_0   0 
+	#define BATTERY_PERCENT_1   15
+	#define BATTERY_PERCENT_2   30
+	#define BATTERY_PERCENT_3   55
+	#define BATTERY_PERCENT_4   85
+	#define BATTERY_PERCENT_5   99 
+
+	#define BATTERY_LEVEL_0     BATTERY_LOW
+	#define BATTERY_LEVEL_1     3655
+	#define BATTERY_LEVEL_2     3760
+	#define BATTERY_LEVEL_3     3840
+	#define BATTERY_LEVEL_4     4000
+	#define BATTERY_LEVEL_5     (BATTERY_HIGH)
+
+	#define CAPACITY_PERCENTAGE(curV, vL, pL, vH, pH) (pL+((pH-pL)*(curV-vL)*100/(vH-vL))/100)
+
 	static u32 calculate_capacity(u32 current_voltage);
 #endif
 
@@ -486,7 +503,7 @@ static void real_msm_batt_update_psy_status(void)
 	}
 
 	#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
-		msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
+		//msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
 	#endif    
 
 	if (charger_status == msm_batt_info.charger_status &&
@@ -572,7 +589,8 @@ static void real_msm_batt_update_psy_status(void)
 		}
 		#ifdef CONFIG_CUSTOM_BATTERY_PERCENT_FOR_PW28
 			rep_batt_chg.v1.battery_voltage = msm_batt_get_vbatt_voltage();
-			msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
+			msm_batt_info.batt_capacity = msm_batt_info.calculate_capacity(rep_batt_chg.v1.battery_voltage);
+			//msm_batt_info.battery_voltage =	rep_batt_chg.v1.battery_voltage >> 16;
 		#endif  
 	} else {
 		/* Correct charger status */
@@ -1313,10 +1331,23 @@ static u32 calculate_capacity(u32 current_voltage)
 		} 
 		else //Se realiza el cálculo para el resto de porcentajes
 		{
-			cur_percentage = msm_batt_capacity(current_voltage);
-
-			//Con el cargador conectado, se ha de restar un 6% para evitar picos de porcentaje.
-			if(is_chg != 0) 
+			if (current_voltage <= BATTERY_LEVEL_0)
+				cur_percentage =  BATTERY_PERCENT_0;
+			else if ((BATTERY_LEVEL_0 < current_voltage ) && (current_voltage <= BATTERY_LEVEL_1))
+				cur_percentage = CAPACITY_PERCENTAGE(current_voltage, BATTERY_LEVEL_0, BATTERY_PERCENT_0,BATTERY_LEVEL_1,BATTERY_PERCENT_1);
+			else if ((BATTERY_LEVEL_1 < current_voltage ) && (current_voltage <= BATTERY_LEVEL_2))
+				cur_percentage = CAPACITY_PERCENTAGE(current_voltage, BATTERY_LEVEL_1, BATTERY_PERCENT_1,BATTERY_LEVEL_2,BATTERY_PERCENT_2);
+			else if ((BATTERY_LEVEL_2 < current_voltage ) && (current_voltage <= BATTERY_LEVEL_3))
+				cur_percentage = CAPACITY_PERCENTAGE(current_voltage, BATTERY_LEVEL_2, BATTERY_PERCENT_2,BATTERY_LEVEL_3,BATTERY_PERCENT_3);
+			else if ((BATTERY_LEVEL_3 < current_voltage ) && (current_voltage <= BATTERY_LEVEL_4))
+				cur_percentage = CAPACITY_PERCENTAGE(current_voltage, BATTERY_LEVEL_3, BATTERY_PERCENT_3,BATTERY_LEVEL_4,BATTERY_PERCENT_4);
+			else if ((BATTERY_LEVEL_4 < current_voltage ) && (current_voltage <=  BATTERY_LEVEL_5))
+				cur_percentage = CAPACITY_PERCENTAGE(current_voltage, BATTERY_LEVEL_4, BATTERY_PERCENT_4,BATTERY_LEVEL_5,BATTERY_PERCENT_5);
+			else 
+				cur_percentage = BATTERY_PERCENT_5;
+		
+			//Con el cargador conectado, se ha de restar un porcentaje de BATTERY_CHG_PERCENT para evitar picos de porcentaje.
+			if(is_chg == 1) 
 				cur_percentage = cur_percentage - BATTERY_CHG_PERCENT;
 		}
 	}
@@ -1583,7 +1614,7 @@ static int __devinit msm_batt_probe(struct platform_device *pdev)
 	}
 
 	#ifdef CONFIG_HAS_EARLYSUSPEND
-		msm_batt_info.early_suspend.level   = EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 45;
+		msm_batt_info.early_suspend.level   = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
 		msm_batt_info.early_suspend.suspend = msm_batt_early_suspend;
 		msm_batt_info.early_suspend.resume  = msm_batt_late_resume;
 		register_early_suspend(&msm_batt_info.early_suspend);
@@ -1607,9 +1638,31 @@ static int __devexit msm_batt_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#if defined CONFIG_PM
+/* Añadido resume para solventar problemas al salir del modo suspensión
+   con el cargador conectado.*/
+static int  msm_batt_resume(struct platform_device *pdev)
+{
+	int rc;
+	msm_batt_update_psy_status();
+	set_data_to_arm9(WAKE_UPDATE_BATT_INFO,(char *)&rc,sizeof(int));
+	return 0;
+}
+
+static int msm_batt_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	msm_batt_update_psy_status();
+	return 0;
+}
+#endif
+
 static struct platform_driver msm_batt_driver = {
 	.probe = msm_batt_probe,
 	.remove = __devexit_p(msm_batt_remove),
+#if defined CONFIG_PM
+	.suspend = msm_batt_suspend,
+	.resume = msm_batt_resume,
+#endif
 	.driver = {
 		   .name = "msm-battery",
 		   .owner = THIS_MODULE,

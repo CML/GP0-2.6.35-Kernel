@@ -29,7 +29,6 @@
 #include <linux/mmc/host.h>
 
 #include <linux/io.h>
-#include <linux/sdhci-pltfm.h>
 
 #include "sdhci.h"
 
@@ -50,10 +49,11 @@ static struct sdhci_ops sdhci_pltfm_ops = {
 
 static int __devinit sdhci_pltfm_probe(struct platform_device *pdev)
 {
-	struct sdhci_pltfm_data *pdata = pdev->dev.platform_data;
 	struct sdhci_host *host;
 	struct resource *iomem;
 	int ret;
+
+	BUG_ON(pdev == NULL);
 
 	iomem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!iomem) {
@@ -61,7 +61,7 @@ static int __devinit sdhci_pltfm_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	if (resource_size(iomem) < 0x100)
+	if (resource_size(iomem) != 0x100)
 		dev_err(&pdev->dev, "Invalid iomem size. You may "
 			"experience problems.\n");
 
@@ -76,12 +76,7 @@ static int __devinit sdhci_pltfm_probe(struct platform_device *pdev)
 	}
 
 	host->hw_name = "platform";
-	if (pdata && pdata->ops)
-		host->ops = pdata->ops;
-	else
-		host->ops = &sdhci_pltfm_ops;
-	if (pdata)
-		host->quirks = pdata->quirks;
+	host->ops = &sdhci_pltfm_ops;
 	host->irq = platform_get_irq(pdev, 0);
 
 	if (!request_mem_region(iomem->start, resource_size(iomem),
@@ -98,12 +93,6 @@ static int __devinit sdhci_pltfm_probe(struct platform_device *pdev)
 		goto err_remap;
 	}
 
-	if (pdata && pdata->init) {
-		ret = pdata->init(host);
-		if (ret)
-			goto err_plat_init;
-	}
-
 	ret = sdhci_add_host(host);
 	if (ret)
 		goto err_add_host;
@@ -113,9 +102,6 @@ static int __devinit sdhci_pltfm_probe(struct platform_device *pdev)
 	return 0;
 
 err_add_host:
-	if (pdata && pdata->exit)
-		pdata->exit(host);
-err_plat_init:
 	iounmap(host->ioaddr);
 err_remap:
 	release_mem_region(iomem->start, resource_size(iomem));
@@ -128,7 +114,6 @@ err:
 
 static int __devexit sdhci_pltfm_remove(struct platform_device *pdev)
 {
-	struct sdhci_pltfm_data *pdata = pdev->dev.platform_data;
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct resource *iomem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	int dead;
@@ -140,8 +125,6 @@ static int __devexit sdhci_pltfm_remove(struct platform_device *pdev)
 		dead = 1;
 
 	sdhci_remove_host(host, dead);
-	if (pdata && pdata->exit)
-		pdata->exit(host);
 	iounmap(host->ioaddr);
 	release_mem_region(iomem->start, resource_size(iomem));
 	sdhci_free_host(host);
@@ -182,3 +165,4 @@ MODULE_DESCRIPTION("Secure Digital Host Controller Interface platform driver");
 MODULE_AUTHOR("Mocean Laboratories <info@mocean-labs.com>");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:sdhci");
+

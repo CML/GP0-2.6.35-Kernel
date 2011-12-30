@@ -174,7 +174,7 @@ struct ap_profile {
 };
 
 
-#define MACLIST_MODE_DISABLED		0
+#define MACLIST_MODE_DISABLED	0
 #define MACLIST_MODE_DENY		1
 #define MACLIST_MODE_ALLOW		2
 struct mflist {

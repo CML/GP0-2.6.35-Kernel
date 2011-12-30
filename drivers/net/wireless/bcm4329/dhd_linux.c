@@ -67,6 +67,12 @@
 #if defined(CUSTOMER_HW2) && defined(CONFIG_WIFI_CONTROL_FUNC)
 #include <linux/wlan_plat.h>
 
+#ifdef CONFIG_BOARD_PW28
+	#if defined(CONFIG_HAS_EARLYSUSPEND)
+		#undef CONFIG_HAS_EARLYSUSPEND
+	#endif
+#endif
+
 struct semaphore wifi_control_sem;
 
 struct dhd_bus *g_bus;
@@ -191,8 +197,10 @@ static int wifi_resume(struct platform_device *pdev)
 static struct platform_driver wifi_device = {
 	.probe          = wifi_probe,
 	.remove         = wifi_remove,
+#ifndef CONFIG_BOARD_PW28
 	.suspend        = wifi_suspend,
 	.resume         = wifi_resume,
+#endif
 	.driver         = {
 	.name   = "bcm4329_wlan",
 	}
@@ -511,7 +519,11 @@ static int dhd_sleep_pm_callback(struct notifier_block *nfb, unsigned long actio
 	switch (action) {
 	case PM_HIBERNATION_PREPARE:
 	case PM_SUSPEND_PREPARE:
+	#ifdef CONFIG_BOARD_PW28
+		dhd_mmc_suspend = FALSE;
+	#else
 		dhd_mmc_suspend = TRUE;
+	#endif
 		ret = NOTIFY_OK;
 		break;
 	case PM_POST_HIBERNATION:
@@ -2663,7 +2675,7 @@ dhd_module_init(void)
 		DHD_ERROR(("%s: sdio_register_driver failed\n", __FUNCTION__));
 		goto fail_1;
 	}
-#if 0
+#ifndef CONFIG_BOARD_PW28
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	/*
 	 * Wait till MMC sdio_register_driver callback called and made driver attach.
@@ -2678,7 +2690,7 @@ dhd_module_init(void)
 #endif
 #endif
 	return error;
-#if 0
+#ifndef CONFIG_BOARD_PW28
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 fail_2:
 	dhd_bus_unregister();

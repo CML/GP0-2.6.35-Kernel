@@ -143,12 +143,6 @@ static int sdio_irq_thread(void *_host)
 
 	if (host->caps & MMC_CAP_SDIO_IRQ)
 		host->ops->enable_sdio_irq(host, 0);
-  while (!kthread_should_stop()) {
-    printk("[%s]: [%d], wait for someone to reclaim\n", __func__, current->pid);
-    set_current_state(TASK_INTERRUPTIBLE);
-    schedule_timeout(HZ);
-    set_current_state(TASK_RUNNING);
-  }
 
 	pr_debug("%s: IRQ thread exiting with code %d\n",
 		 mmc_hostname(host), ret);
@@ -217,11 +211,6 @@ int sdio_claim_irq(struct sdio_func *func, sdio_irq_handler_t *handler)
 		return -EBUSY;
 	}
 
-	func->irq_handler = handler;
-	ret = sdio_card_irq_get(func->card);
-	if (ret)
-		func->irq_handler = NULL;
-
 	ret = mmc_io_rw_direct(func->card, 0, 0, SDIO_CCCR_IENx, 0, &reg);
 	if (ret)
 		return ret;
@@ -233,6 +222,11 @@ int sdio_claim_irq(struct sdio_func *func, sdio_irq_handler_t *handler)
 	ret = mmc_io_rw_direct(func->card, 1, 0, SDIO_CCCR_IENx, reg, NULL);
 	if (ret)
 		return ret;
+
+	func->irq_handler = handler;
+	ret = sdio_card_irq_get(func->card);
+	if (ret)
+		func->irq_handler = NULL;
 
 	return ret;
 }
@@ -254,13 +248,11 @@ int sdio_release_irq(struct sdio_func *func)
 
 	pr_debug("SDIO: Disabling IRQ for %s...\n", sdio_func_id(func));
 
-#if 0
 	if (func->irq_handler) {
 		func->irq_handler = NULL;
 		sdio_card_irq_put(func->card);
 	}
 
-#endif
 	ret = mmc_io_rw_direct(func->card, 0, 0, SDIO_CCCR_IENx, 0, &reg);
 	if (ret)
 		return ret;
@@ -274,11 +266,6 @@ int sdio_release_irq(struct sdio_func *func)
 	ret = mmc_io_rw_direct(func->card, 1, 0, SDIO_CCCR_IENx, reg, NULL);
 	if (ret)
 		return ret;
-
-	if (func->irq_handler) {
-		func->irq_handler = NULL;
-		sdio_card_irq_put(func->card);
-	}
 
 	return 0;
 }

@@ -317,13 +317,21 @@ static int __devinit sdhci_s3c_probe(struct platform_device *pdev)
 	host->irq = irq;
 
 	/* Setup quirks for the controller */
-	host->quirks |= SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC;
+
+	/* Currently with ADMA enabled we are getting some length
+	 * interrupts that are not being dealt with, do disable
+	 * ADMA until this is sorted out. */
+	host->quirks |= SDHCI_QUIRK_BROKEN_ADMA;
+	host->quirks |= SDHCI_QUIRK_32BIT_ADMA_SIZE;
 
 #ifndef CONFIG_MMC_SDHCI_S3C_DMA
 
 	/* we currently see overruns on errors, so disable the SDMA
 	 * support as well. */
 	host->quirks |= SDHCI_QUIRK_BROKEN_DMA;
+
+	/* PIO currently has problems with multi-block IO */
+	host->quirks |= SDHCI_QUIRK_NO_MULTIBLOCK;
 
 #endif /* CONFIG_MMC_SDHCI_S3C_DMA */
 
@@ -365,28 +373,6 @@ static int __devinit sdhci_s3c_probe(struct platform_device *pdev)
 
 static int __devexit sdhci_s3c_remove(struct platform_device *pdev)
 {
-	struct sdhci_host *host =  platform_get_drvdata(pdev);
-	struct sdhci_s3c *sc = sdhci_priv(host);
-	int ptr;
-
-	sdhci_remove_host(host, 1);
-
-	for (ptr = 0; ptr < 3; ptr++) {
-		if (sc->clk_bus[ptr]) {
-			clk_disable(sc->clk_bus[ptr]);
-			clk_put(sc->clk_bus[ptr]);
-		}
-	}
-	clk_disable(sc->clk_io);
-	clk_put(sc->clk_io);
-
-	iounmap(host->ioaddr);
-	release_resource(sc->ioarea);
-	kfree(sc->ioarea);
-
-	sdhci_free_host(host);
-	platform_set_drvdata(pdev, NULL);
-
 	return 0;
 }
 

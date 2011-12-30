@@ -199,40 +199,6 @@ static int sdio_disable_cd(struct mmc_card *card)
 }
 
 /*
- * Devices that remain active during a system suspend are
- * put back into 1-bit mode.
- */
-static int sdio_disable_wide(struct mmc_card *card)
-{
-	int ret;
-	u8 ctrl;
-
-	if (!(card->host->caps & (MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA)))
-		return 0;
-
-	if (card->cccr.low_speed && !card->cccr.wide_bus)
-		return 0;
-
-	ret = mmc_io_rw_direct(card, 0, 0, SDIO_CCCR_IF, 0, &ctrl);
-	if (ret)
-		return ret;
-
-	if (!(ctrl & (SDIO_BUS_WIDTH_4BIT | SDIO_BUS_WIDTH_8BIT)))
-		return 0;
-
-	ctrl &= ~(SDIO_BUS_WIDTH_4BIT | SDIO_BUS_WIDTH_8BIT);
-	ctrl |= SDIO_BUS_ASYNC_INT;
-
-	ret = mmc_io_rw_direct(card, 1, 0, SDIO_CCCR_IF, ctrl, NULL);
-	if (ret)
-		return ret;
-
-	mmc_set_bus_width(card->host, MMC_BUS_WIDTH_1);
-
-	return 0;
-}
-
-/*
  * Test if the card supports high-speed mode and, if so, switch to it.
  */
 static int sdio_enable_hs(struct mmc_card *card)
@@ -307,26 +273,12 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	card->type = MMC_TYPE_SDIO;
 
 	/*
-	 * Call the optional HC's init_card function to handle quirks.
-	 */
-	if (host->ops->init_card)
-		host->ops->init_card(host, card);
-
-	/*
 	 * For native busses:  set card RCA and quit open drain mode.
 	 */
 	if (!powered_resume && !mmc_host_is_spi(host)) {
 		err = mmc_send_relative_addr(host, &card->rca);
 		if (err)
 			goto remove;
-
-		/*
-		 * Update oldcard with the new RCA received from the SDIO
-		 * device -- we're doing this so that it's updated in the
-		 * "card" struct when oldcard overwrites that later.
-		 */
-		if (oldcard)
-			oldcard->rca = card->rca;
 
 		mmc_set_bus_mode(host, MMC_BUSMODE_PUSHPULL);
 	}
@@ -379,11 +331,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			goto err;
 		}
 		card = oldcard;
-#if 1
-		/* continue to setup high speed, wide and clock rate */
-#else
 		return 0;
-#endif
 	}
 
 	/*
@@ -506,12 +454,6 @@ static int mmc_sdio_suspend(struct mmc_host *host)
 		}
 	}
 
-	if (!err && host->pm_flags & MMC_PM_KEEP_POWER) {
-		mmc_claim_host(host);
-		sdio_disable_wide(host->card);
-		mmc_release_host(host);
-	}
-
 	return err;
 }
 
@@ -526,11 +468,6 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	mmc_claim_host(host);
 	err = mmc_sdio_init_card(host, host->ocr, host->card,
 				 (host->pm_flags & MMC_PM_KEEP_POWER));
-	if (!err)
-		/* We may have switched to 1-bit mode during suspend. */
-		err = sdio_enable_wide(host->card);
-	if (!err && host->sdio_irqs)
-		mmc_signal_sdio_irq(host);
 	mmc_release_host(host);
 
 	/*
@@ -609,8 +546,7 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 	 * The number of functions on the card is encoded inside
 	 * the ocr.
 	 */
-	funcs = (ocr & 0x70000000) >> 28;
-	card->sdio_funcs = 0;
+	card->sdio_funcs = funcs = (ocr & 0x70000000) >> 28;
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	if (host->embedded_sdio_data.funcs)
@@ -627,7 +563,7 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 	/*
 	 * Initialize (but don't add) all present functions.
 	 */
-	for (i = 0; i < funcs; i++, card->sdio_funcs++) {
+	for (i = 0;i < funcs;i++) {
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 		if (host->embedded_sdio_data.funcs) {
 			struct sdio_func *tmp;

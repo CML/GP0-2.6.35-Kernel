@@ -2,7 +2,7 @@
  *  linux/drivers/mmc/host/msmsdcc.h - QCT MSM7K SDC Controller
  *
  *  Copyright (C) 2008 Google, All Rights Reserved.
- *  Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ *  Copyright (c) 2009, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -168,14 +168,6 @@
 
 #define NR_SG		32
 
-#define MSM_MMC_IDLE_TIMEOUT	10000 /* msecs */
-
-/*
- * Set the request timeout to 10secs to allow
- * bad cards/controller to respond.
- */
-#define MSM_MMC_REQ_TIMEOUT	10000 /* msecs */
-
 struct clk;
 
 struct msmsdcc_nc_dmadata {
@@ -196,11 +188,10 @@ struct msmsdcc_dma_data {
 	int				num_ents;
 
 	int				channel;
-	int				crci;
 	struct msmsdcc_host		*host;
 	int				busy; /* Set if DM is busy */
 	unsigned int 			result;
-	struct msm_dmov_errdata		err;
+	struct msm_dmov_errdata 	*err;
 };
 
 struct msmsdcc_pio_data {
@@ -224,7 +215,6 @@ struct msmsdcc_host {
 	struct resource		*irqres;
 	struct resource		*memres;
 	struct resource		*dmares;
-	struct resource		*dma_crci_res;
 	void __iomem		*base;
 	int			pdev_id;
 
@@ -233,7 +223,6 @@ struct msmsdcc_host {
 	struct mmc_host		*mmc;
 	struct clk		*clk;		/* main MMC bus clock */
 	struct clk		*pclk;		/* SDCC peripheral bus clock */
-	struct clk		*dfab_pclk;	/* Daytona Fabric SDCC clock */
 	unsigned int		clks_on;	/* set if clocks are enabled */
 
 	unsigned int		eject;		/* eject state */
@@ -258,6 +247,7 @@ struct msmsdcc_host {
 
 	struct tasklet_struct 	dma_tlet;
 
+	unsigned long           suspended;
 	unsigned int prog_scan;
 	unsigned int prog_enable;
 
@@ -269,41 +259,13 @@ struct msmsdcc_host {
 	u32					cmd_c;
 
 	unsigned int	mci_irqenable;
-
 	unsigned int	dummy_52_needed;
-	unsigned int	dummy_52_sent;
-
+	unsigned int	dummy_52_state;
 	unsigned int	sdio_irq_disabled;
 	struct wake_lock	sdio_wlock;
 	struct wake_lock	sdio_suspend_wlock;
 	unsigned int    sdcc_suspending;
 
-	unsigned int sdcc_irq_disabled;
-	struct timer_list req_tout_timer;
-	unsigned long reg_write_delay;
-	bool sdio_gpio_lpm;
-	bool irq_wake_enabled;
 };
-
-int msmsdcc_set_pwrsave(struct mmc_host *mmc, int pwrsave);
-int msmsdcc_sdio_al_lpm(struct mmc_host *mmc, bool enable);
-
-#ifdef CONFIG_MSM_SDIO_AL
-
-static inline int msmsdcc_lpm_enable(struct mmc_host *mmc)
-{
-	return msmsdcc_sdio_al_lpm(mmc, true);
-}
-
-static inline int msmsdcc_lpm_disable(struct mmc_host *mmc)
-{
-	struct msmsdcc_host *host = mmc_priv(mmc);
-	int ret;
-
-	ret = msmsdcc_sdio_al_lpm(mmc, false);
-	wake_unlock(&host->sdio_wlock);
-	return ret;
-}
-#endif
 
 #endif

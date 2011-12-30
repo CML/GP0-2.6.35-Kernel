@@ -37,7 +37,6 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 #include "sdio_ops.h"
-#include <linux/pm.h>
 
 static struct workqueue_struct *workqueue;
 static struct wake_lock mmc_delayed_work_wake_lock;
@@ -49,23 +48,6 @@ static struct wake_lock mmc_delayed_work_wake_lock;
  */
 int use_spi_crc = 1;
 module_param(use_spi_crc, bool, 0);
-
-/*
- * We normally treat cards as removed during suspend if they are not
- * known to be on a non-removable bus, to avoid the risk of writing
- * back data to a different card after resume.  Allow this to be
- * overridden if necessary.
- */
-#ifdef CONFIG_MMC_UNSAFE_RESUME
-int mmc_assume_removable;
-#else
-int mmc_assume_removable = 1;
-#endif
-EXPORT_SYMBOL(mmc_assume_removable);
-module_param_named(removable, mmc_assume_removable, bool, 0644);
-MODULE_PARM_DESC(
-	removable,
-	"MMC/SD cards are removable and may be removed during suspend");
 
 /*
  * Internal function. Schedule delayed work in the MMC work queue.
@@ -241,11 +223,7 @@ void mmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 
 	mmc_start_request(host, mrq);
 
-	#ifndef CONFIG_SCHED_BFS
-		wait_for_completion_io(&complete);
-	#else
-		wait_for_completion(&complete);
-	#endif
+	wait_for_completion_io(&complete);
 }
 
 EXPORT_SYMBOL(mmc_wait_for_req);
@@ -332,7 +310,7 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 			 * The limit is really 250 ms, but that is
 			 * insufficient for some crappy cards.
 			 */
-			limit_us = 300000;
+			limit_us = 800000;
 		else
 			limit_us = 100000;
 
@@ -503,14 +481,6 @@ int __mmc_claim_host(struct mmc_host *host, atomic_t *abort)
 	might_sleep();
 
 	add_wait_queue(&host->wq, &wait);
-#ifdef CONFIG_PM_RUNTIME
-	while (mmc_dev(host)->power.runtime_status == RPM_SUSPENDING) {
-		if (host->suspend_task == current)
-			break;
-		msleep(15);
-	}
-#endif
-
 	spin_lock_irqsave(&host->lock, flags);
 	while (1) {
 		set_current_state(TASK_UNINTERRUPTIBLE);
@@ -561,11 +531,11 @@ int mmc_try_claim_host(struct mmc_host *host)
 EXPORT_SYMBOL(mmc_try_claim_host);
 
 /**
- *	mmc_do_release_host - release a claimed host
- *	@host: mmc host to release
+ *     mmc_do_release_host - release a claimed host
+ *     @host: mmc host to release
  *
- *	If you successfully claimed a host, this function will
- *	release it again.
+ *     If you successfully claimed a host, this function will
+ *     release it again.
  */
 void mmc_do_release_host(struct mmc_host *host)
 {
@@ -1023,17 +993,11 @@ static inline void mmc_bus_put(struct mmc_host *host)
 
 int mmc_resume_bus(struct mmc_host *host)
 {
-	unsigned long flags;
-
 	if (!mmc_bus_needs_resume(host))
 		return -EINVAL;
 
 	printk("%s: Starting deferred resume\n", mmc_hostname(host));
-	spin_lock_irqsave(&host->lock, flags);
 	host->bus_resume_flags &= ~MMC_BUSRESUME_NEEDS_RESUME;
-	host->rescan_disable = 0;
-	spin_unlock_irqrestore(&host->lock, flags);
-
 	mmc_bus_get(host);
 	if (host->bus_ops && !host->bus_dead) {
 		mmc_power_up(host);
@@ -1132,23 +1096,12 @@ void mmc_rescan(struct work_struct *work)
 	u32 ocr;
 	int err;
 	int extend_wakelock = 0;
-	unsigned long flags;
-
-	spin_lock_irqsave(&host->lock, flags);
-	if (host->rescan_disable) {
-		spin_unlock_irqrestore(&host->lock, flags);
-		return;
-	}
-	spin_unlock_irqrestore(&host->lock, flags);
 
 	mmc_bus_get(host);
 
-	/*
-	 * if there is a _removable_ card registered, check whether it is
-	 * still present
-	 */
-	if (host->bus_ops && host->bus_ops->detect && !host->bus_dead
-	    && !(host->caps & MMC_CAP_NONREMOVABLE)) {
+	/* if there is a card registered, check whether it is still present */
+	if ((host->bus_ops != NULL) && host->bus_ops->detect &&
+		!host->bus_dead) {
 		host->bus_ops->detect(host);
 		/* If the card was removed the bus will be marked
 		 * as dead - extend the wakelock so userspace
@@ -1182,7 +1135,6 @@ void mmc_rescan(struct work_struct *work)
 	mmc_claim_host(host);
 
 	mmc_power_up(host);
-	sdio_reset(host);
 	mmc_go_idle(host);
 
 	mmc_send_if_cond(host, host->ocr_avail);
@@ -1250,7 +1202,7 @@ void mmc_stop_host(struct mmc_host *host)
 
 	if (host->caps & MMC_CAP_DISABLE)
 		cancel_delayed_work(&host->disable);
-	cancel_delayed_work_sync(&host->detect);
+	cancel_delayed_work(&host->detect);
 	mmc_flush_scheduled_work();
 
 	/* clear pm flags now and let card drivers set them as needed */
@@ -1353,8 +1305,9 @@ EXPORT_SYMBOL(mmc_card_can_sleep);
 /**
  *	mmc_suspend_host - suspend a host
  *	@host: mmc host
+ *	@state: suspend mode (PM_SUSPEND_xxx)
  */
-int mmc_suspend_host(struct mmc_host *host)
+int mmc_suspend_host(struct mmc_host *host, pm_message_t state)
 {
 	int err = 0;
 
@@ -1368,19 +1321,6 @@ int mmc_suspend_host(struct mmc_host *host)
 	if (host->bus_ops && !host->bus_dead) {
 		if (host->bus_ops->suspend)
 			err = host->bus_ops->suspend(host);
-		if (err == -ENOSYS || !host->bus_ops->resume) {
-			/*
-			 * We simply "remove" the card in this case.
-			 * It will be redetected on resume.
-			 */
-			if (host->bus_ops->remove)
-				host->bus_ops->remove(host);
-			mmc_claim_host(host);
-			mmc_detach_bus(host);
-			mmc_release_host(host);
-			host->pm_flags = 0;
-			err = 0;
-		}
 	}
 	mmc_bus_put(host);
 
@@ -1401,7 +1341,7 @@ int mmc_resume_host(struct mmc_host *host)
 	int err = 0;
 
 	mmc_bus_get(host);
-	if (mmc_bus_manual_resume(host)) {
+	if (host->bus_resume_flags & MMC_BUSRESUME_MANUAL_RESUME) {
 		host->bus_resume_flags |= MMC_BUSRESUME_NEEDS_RESUME;
 		mmc_bus_put(host);
 		return 0;
@@ -1442,20 +1382,11 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 {
 	struct mmc_host *host = container_of(
 		notify_block, struct mmc_host, pm_notify);
-	unsigned long flags;
+
 
 	switch (mode) {
 	case PM_HIBERNATION_PREPARE:
 	case PM_SUSPEND_PREPARE:
-
-		spin_lock_irqsave(&host->lock, flags);
-		if (mmc_bus_needs_resume(host)) {
-			spin_unlock_irqrestore(&host->lock, flags);
-			break;
-		}
-		host->rescan_disable = 1;
-		spin_unlock_irqrestore(&host->lock, flags);
-		cancel_delayed_work_sync(&host->detect);
 
 		if (!host->bus_ops || host->bus_ops->suspend)
 			break;
@@ -1465,20 +1396,9 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		mmc_claim_host(host);
 		mmc_detach_bus(host);
 		mmc_release_host(host);
+		host->pm_flags = 0;
 		break;
 
-	case PM_POST_SUSPEND:
-	case PM_POST_HIBERNATION:
-	case PM_POST_RESTORE:
-
-		spin_lock_irqsave(&host->lock, flags);
-		if (mmc_bus_manual_resume(host)) {
-			spin_unlock_irqrestore(&host->lock, flags);
-			break;
-		}
-		host->rescan_disable = 0;
-		spin_unlock_irqrestore(&host->lock, flags);
-		mmc_detect_change(host, 0);
 	}
 
 	return 0;

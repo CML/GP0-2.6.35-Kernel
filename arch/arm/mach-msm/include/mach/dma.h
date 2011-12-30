@@ -15,7 +15,6 @@
  */
 
 #ifndef __ASM_ARCH_MSM_DMA_H
-#define __ASM_ARCH_MSM_DMA_H
 
 #include <linux/list.h>
 #include <mach/msm_iomap.h>
@@ -27,6 +26,7 @@ struct msm_dmov_errdata {
 struct msm_dmov_cmd {
 	struct list_head list;
 	unsigned int cmdptr;
+	unsigned int crci_mask;
 	void (*complete_func)(struct msm_dmov_cmd *cmd,
 			      unsigned int result,
 			      struct msm_dmov_errdata *err);
@@ -39,6 +39,7 @@ void msm_dmov_enqueue_cmd_ext(unsigned id, struct msm_dmov_cmd *cmd);
 void msm_dmov_stop_cmd(unsigned id, struct msm_dmov_cmd *cmd, int graceful);
 void msm_dmov_flush(unsigned int id);
 int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr);
+unsigned int msm_dmov_build_crci_mask(int n, ...);
 
 #define DMOV_CRCIS_PER_CONF 10
 
@@ -169,11 +170,11 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr);
 #define DMOV_TSIF_CHAN         4
 #define DMOV_TSIF_CRCI         6
 
-#define DMOV_HSUART1_TX_CHAN   7
-#define DMOV_HSUART1_TX_CRCI   11
+#define DMOV_HSUART1_TX_CHAN   22
+#define DMOV_HSUART1_TX_CRCI   8
 
-#define DMOV_HSUART1_RX_CHAN   7
-#define DMOV_HSUART1_RX_CRCI   12
+#define DMOV_HSUART1_RX_CHAN   23
+#define DMOV_HSUART1_RX_CRCI   9
 
 #define DMOV_HSUART2_TX_CHAN   8
 #define DMOV_HSUART2_TX_CRCI   13

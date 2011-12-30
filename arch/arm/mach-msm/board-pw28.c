@@ -72,6 +72,7 @@
 #ifdef CONFIG_USB_ANDROID
 	#include <linux/usb/android_composite.h>
 #endif
+
 #include "smd_private.h"
 #define ID_SMD_UUID 12
 
@@ -978,7 +979,7 @@ static struct platform_device msm_fb_device = {
 			}
 
 			/* units of mV, steps of 50 mV */
-			rc = vreg_set_level(vreg_bt, 2600);
+			rc = vreg_set_level(vreg_bt, 2650);
 			if (rc) {
 				printk(KERN_ERR "%s: vreg set level failed (%d)\n",
 					   __func__, rc);
@@ -1054,7 +1055,7 @@ int wlan_power(int flag)
 		return PTR_ERR(vreg_bt);
 	}
 	/* units of mV, steps of 50 mV */
-	rc = vreg_set_level(vreg_bt, 2650);
+	rc = vreg_set_level(vreg_bt, 2850);
 	if (rc) {
 		printk(KERN_ERR "%s: vreg set level failed (%d)\n",
 				__func__, rc);
@@ -1067,6 +1068,7 @@ int wlan_power(int flag)
 					__func__, rc);
 			return -EIO;
 		}
+		gpio_free(66);
 	}else {
 		rc = vreg_disable(vreg_bt);
 		if (rc) {
@@ -1151,9 +1153,8 @@ static int synaptics_power(int on) {
         if (on) {
         	pr_info("synaptics power on\n");
             
-        	gpio_tlmm_config(GPIO_CFG(124,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);            
-    		gpio_tlmm_config(GPIO_CFG(30, 0, GPIO_CFG_OUTPUT,
-                GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+        	gpio_tlmm_config(GPIO_CFG(124, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);            
+    		gpio_tlmm_config(GPIO_CFG(30, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
             gpio_request(30, "touch power");
             gpio_direction_output(30, 1);
             
@@ -1162,7 +1163,7 @@ static int synaptics_power(int on) {
     		gpio_tlmm_config(GPIO_CFG(123, 0, GPIO_CFG_OUTPUT,
                 GPIO_CFG_PULL_UP, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
             vreg_enable(vreg);
-            vreg_set_level(vreg, 2800);
+            vreg_set_level(vreg, 2250);
         }
         else {
         	pr_info("synaptics power off\n");
@@ -1320,7 +1321,7 @@ static struct i2c_board_info gpio_i2c_devices[] = {
 					return;
 				}
 
-				rc = vreg_set_level(vreg_gp2, 2800);
+				rc = vreg_set_level(vreg_gp2, 2600);
 				if (rc) {
 					printk(KERN_ERR "%s: GP2 set_level failed (%d)\n",
 						__func__, rc);
@@ -1335,7 +1336,7 @@ static struct i2c_board_info gpio_i2c_devices[] = {
 					return;
 				}
 
-				rc = vreg_set_level(vreg_gp3, 2800);
+				rc = vreg_set_level(vreg_gp3, 2600);
 				if (rc) {
 					printk(KERN_ERR "%s: GP3 set level failed (%d)\n",
 						__func__, rc);
@@ -1569,7 +1570,7 @@ static void __init msm7x2x_init_irq(void)
 
 static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 	.acpu_switch_time_us = 50,
-	.max_speed_delta_khz = 256000,
+	.max_speed_delta_khz = 400000,
 	.vdd_switch_time_us = 62,
 	.max_axi_khz = 160000,
 };
@@ -1598,15 +1599,6 @@ static struct msm_gpio sdc1_cfg_data[] = {
 	{GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA), "sdc1_clk"},
 };
 
-static struct msm_gpio sdc1_sleep_cfg_data[] = {
-        {GPIO_CFG(51, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_dat_3"},
-        {GPIO_CFG(52, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_dat_2"},
-        {GPIO_CFG(53, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_dat_1"},
-        {GPIO_CFG(54, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_dat_0"},
-        {GPIO_CFG(55, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_8MA), "sdc1_cmd"},
-        {GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_12MA), "sdc1_clk"},
-};
-
 static struct msm_gpio sdc2_cfg_data[] = {
 	{GPIO_CFG(62, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA), "sdc2_clk"},
 	{GPIO_CFG(63, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc2_cmd"},
@@ -1630,7 +1622,7 @@ static struct sdcc_gpio sdcc_cfg_data[] = {
         {
                 .cfg_data = sdc1_cfg_data,
                 .size = ARRAY_SIZE(sdc1_cfg_data),
-                .sleep_cfg_data = sdc1_sleep_cfg_data,
+                .sleep_cfg_data = NULL,
         },
 #endif
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
@@ -1704,8 +1696,7 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 			     MPP_CFG(MPP_DLOGIC_LVL_MSMP,
 			     MPP_DLOGIC_OUT_CTRL_HIGH));
 		} else {
-			rc = vreg_set_level(vreg_mmc, 2650);
-
+			rc = vreg_set_level(vreg_mmc, 2850);
 			if (!rc)
 				rc = vreg_enable(vreg_mmc);
 		}
@@ -1738,31 +1729,16 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 		.translate_vdd	= msm_sdcc_setup_power,
 		.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	#ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
-	//	.sdiowakeup_irq = MSM_GPIO_TO_INT(66),
+//		.sdiowakeup_irq = MSM_GPIO_TO_INT(66),
 	#endif
 		.msmsdcc_fmin   = 144000,
 		.msmsdcc_fmid   = 24576000,
-		.msmsdcc_fmax   = 49152000,
+		.msmsdcc_fmax   = 24576000,
 		.nonremovable   = 0,
 	#ifdef CONFIG_MMC_MSM_SDC2_DUMMY52_REQUIRED
 		.dummy52_required = 1,
 	#endif
 	};
-#endif
-
-#ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
-	static void sdio_wakeup_gpiocfg_slot2(void)
-	{
-		   gpio_request(66, "sdio_wakeup");
-		   gpio_direction_output(66, 1);
-		   /*
-		    * MSM GPIO 66 will be used as both SDIO wakeup irq and
-		    * DATA_1 for slot 2. Hence, leave it to SDCC driver to
-		    * request this gpio again when it wants to use it as a
-		    * data line.
-		    */
-		   gpio_free(66);
-	}
 #endif
 
 static void __init msm7x2x_init_mmc(void)
@@ -1781,7 +1757,7 @@ static void __init msm7x2x_init_mmc(void)
 	msm_add_sdcc(1, &msm7x2x_sdc1_data);
 #endif
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
-		sdio_wakeup_gpiocfg_slot2();
+		msm_sdcc_setup_gpio(2, 1);
 		msm_add_sdcc(2, &msm7x2x_sdc2_data);
 #endif
 }
@@ -1895,31 +1871,6 @@ static void usb_mpp_init(void)
 		saved_command_line = kzalloc(strlen(boot_command_line)+1, GFP_KERNEL);
 		strcpy(saved_command_line, boot_command_line);
 	}
-
-	void get_sd_boot_mode(unsigned *mode)
-	{
-		unsigned *pMode;
-		unsigned int mode_len = 2*sizeof(unsigned);
-
-		if(0 == mode)
-		{
-		    printk(KERN_ERR "[boot] ERROR: 0 == mode\n");
-		    return;
-		}
-
-		pMode = smem_find(ID_SMD_UUID, mode_len);
-		if (pMode != 0) {
-		    printk(KERN_ERR "[boot] Kernel read SMEM_WM_UUID  mode ={<0x%x>, <0x%x>} len <%d>\n", pMode[0], pMode[1], mode_len);
-		    mode[0] = pMode[0];
-		    mode[1] = pMode[1];
-		    
-		}else{
-		    printk(KERN_ERR "[boot] Can't find the msg \n");
-		}
-
-	}
-
-	EXPORT_SYMBOL(get_sd_boot_mode);
 #endif
 
 static void __init msm7x2x_init(void)
@@ -1932,7 +1883,6 @@ static void __init msm7x2x_init(void)
 	gpio_tlmm_config(GPIO_CFG(97,  0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),GPIO_CFG_ENABLE);
 	if (gpio_request(97, "wlan_ctrl") < 0)
 		printk ("%s-%d,wlan gpio ctrl request err\n", __FILE__, __LINE__);
-	gpio_direction_output(97,0);
 
 	printk(KERN_ERR "bt init gpio\n");
 	gpio_tlmm_config(GPIO_CFG(20, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),GPIO_CFG_ENABLE);
@@ -1962,7 +1912,7 @@ static void __init msm7x2x_init(void)
 	/* The appropriate maximum replacement for 160000 is: */
 	/* msm7x2x_clock_data.max_axi_khz */
 	kgsl_3d0_pdata.pwr_data.pwrlevel[0].gpu_freq = 0;
-	kgsl_3d0_pdata.pwr_data.pwrlevel[0].bus_freq = 160000000;
+	kgsl_3d0_pdata.pwr_data.pwrlevel[0].bus_freq = 1600000000;
 	kgsl_3d0_pdata.pwr_data.init_level = 0;
 	kgsl_3d0_pdata.pwr_data.num_levels = 1;
 	/* 7x27 doesn't allow graphics clocks to be run asynchronously to */

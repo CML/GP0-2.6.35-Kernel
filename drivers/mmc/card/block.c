@@ -45,9 +45,9 @@
 MODULE_ALIAS("mmc:block");
 
 /*
- * max 32 partitions per card
+ * max 16 partitions per card
  */
-#define MMC_SHIFT	5
+#define MMC_SHIFT	4
 #define MMC_NUM_MINORS	(256 >> MMC_SHIFT)
 
 static DECLARE_BITMAP(dev_use, MMC_NUM_MINORS);
@@ -86,7 +86,11 @@ static void mmc_blk_put(struct mmc_blk_data *md)
 	mutex_lock(&open_lock);
 	md->usage--;
 	if (md->usage == 0) {
-		int devidx = md->disk->first_minor >> MMC_SHIFT;
+		int devmaj = MAJOR(disk_devt(md->disk));
+		int devidx = MINOR(disk_devt(md->disk)) >> MMC_SHIFT;
+
+		if (!devmaj)
+			devidx = md->disk->first_minor >> MMC_SHIFT;
 
 		blk_cleanup_queue(md->queue.queue);
 
@@ -422,12 +426,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 				if (err) {
 					printk(KERN_ERR "%s: error %d requesting status\n",
 					       req->rq_disk->disk_name, err);
-				#if 1
-					break;					
-				#else
 					goto cmd_err;
-				#endif
-
 				}
 				/*
 				 * Some cards mishandle the status bits,
@@ -447,12 +446,6 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		}
 
 		if (brq.cmd.error || brq.stop.error || brq.data.error) {
-			#if 1
-				spin_lock_irq(&md->lock);
-				ret = __blk_end_request(req, -EIO, brq.data.blksz);
-				spin_unlock_irq(&md->lock);
-				continue;		
-			#else
 			if (rq_data_dir(req) == READ) {
 				/*
 				 * After an error, we redo I/O one sector at a
@@ -464,7 +457,6 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 				spin_unlock_irq(&md->lock);
 				continue;
 			}
-			#endif
 			goto cmd_err;
 		}
 
@@ -566,7 +558,6 @@ static struct mmc_blk_data *mmc_blk_alloc(struct mmc_card *card)
 	md->disk->private_data = md;
 	md->disk->queue = md->queue.queue;
 	md->disk->driverfs_dev = &card->dev;
-	md->disk->flags = GENHD_FL_EXT_DEVT;
 
 	/*
 	 * As discussed on lkml, GENHD_FL_REMOVABLE should:

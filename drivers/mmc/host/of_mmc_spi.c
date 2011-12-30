@@ -23,8 +23,6 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
-MODULE_LICENSE("GPL");
-
 enum {
 	CD_GPIO = 0,
 	WP_GPIO,
@@ -64,7 +62,7 @@ static int of_mmc_spi_get_ro(struct device *dev)
 struct mmc_spi_platform_data *mmc_spi_get_pdata(struct spi_device *spi)
 {
 	struct device *dev = &spi->dev;
-	struct device_node *np = dev->of_node;
+	struct device_node *np = dev_archdata_get_node(&dev->archdata);
 	struct of_mmc_spi *oms;
 	const u32 *voltage_ranges;
 	int num_ranges;
@@ -135,7 +133,7 @@ EXPORT_SYMBOL(mmc_spi_get_pdata);
 void mmc_spi_put_pdata(struct spi_device *spi)
 {
 	struct device *dev = &spi->dev;
-	struct device_node *np = dev->of_node;
+	struct device_node *np = dev_archdata_get_node(&dev->archdata);
 	struct of_mmc_spi *oms = to_of_mmc_spi(dev);
 	int i;
 

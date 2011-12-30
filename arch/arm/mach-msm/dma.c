@@ -275,6 +275,29 @@ void msm_dmov_stop_cmd(unsigned id, struct msm_dmov_cmd *cmd, int graceful)
 }
 EXPORT_SYMBOL(msm_dmov_stop_cmd);
 
+unsigned int msm_dmov_build_crci_mask(int n, ...)
+{
+	unsigned int mask = 0;
+#ifdef CONFIG_MSM_ADM3
+	int i;
+	int crci;
+	int crci_num;
+	unsigned int crci_muxsel;
+	va_list crcis;
+	va_start(crcis, n);
+	for (i = 0; i < n; i++) {
+		crci = va_arg(crcis, int);
+		crci_muxsel = CRCI_MUXSEL(crci);
+		crci_num = CRCI_NUM(crci);
+		mask |= (1 << (2*crci_num + 1));
+		mask |= (crci_muxsel << (2*crci_num));
+	}
+	va_end(crcis);
+#endif
+	return mask;
+}
+EXPORT_SYMBOL(msm_dmov_build_crci_mask);
+
 void msm_dmov_enqueue_cmd_ext(unsigned id, struct msm_dmov_cmd *cmd)
 {
 	unsigned long irq_flags;
